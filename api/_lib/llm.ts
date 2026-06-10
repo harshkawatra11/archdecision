@@ -62,6 +62,29 @@ export async function* generateStream({ system, user, temperature }: GenerateOpt
   }
 }
 
+/**
+ * Turn an opaque provider error into a friendly, actionable message.
+ * Never leaks a stack trace; distinguishes the common free-tier failure modes.
+ */
+export function humanizeLLMError(e: unknown): string {
+  if (e instanceof LLMConfigError) return e.message;
+  const raw = e instanceof Error ? e.message : String(e ?? '');
+  const s = raw.toLowerCase();
+  if (s.includes('429') || s.includes('quota') || s.includes('resource_exhausted') || s.includes('rate limit')) {
+    return 'The model is rate-limited on the free tier right now. Wait a few seconds and try again.';
+  }
+  if (s.includes('503') || s.includes('overloaded') || s.includes('unavailable')) {
+    return 'The model is temporarily overloaded. Please try again in a moment.';
+  }
+  if (s.includes('safety') || s.includes('blocked')) {
+    return 'The model declined to answer for this content. Try a different repository or question.';
+  }
+  if (s.includes('timeout') || s.includes('deadline')) {
+    return 'That request took too long. Try again — large repos sometimes need a second attempt.';
+  }
+  return 'Could not reach the analysis engine right now. Please try again.';
+}
+
 /** Extract a JSON value from a model response, tolerating ```json fences and stray prose. */
 export function extractJson(text: string): unknown {
   const cleaned = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();

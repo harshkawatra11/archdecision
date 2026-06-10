@@ -4,7 +4,7 @@ import { openSSE, readBody, sendError, sse, type Req, type Res } from './_lib/ht
 import { GitHubError, parseRepoUrl } from './_lib/github.js';
 import { buildRepoProfile } from './_lib/ingest.js';
 import { onboardingUserPrompt, ONBOARDING_SYSTEM } from './_lib/prompts.js';
-import { generateStream, isLLMConfigured, LLMConfigError } from './_lib/llm.js';
+import { generateStream, humanizeLLMError, isLLMConfigured } from './_lib/llm.js';
 import { getCached, cacheProfile } from './_lib/cache.js';
 import type { ADR, RepoProfile } from './_lib/schema.js';
 
@@ -48,9 +48,9 @@ export default async function handler(req: Req, res: Res) {
     res.write('event: end\ndata: {}\n\n');
     res.end();
   } catch (e) {
-    const message = e instanceof LLMConfigError ? e.message : 'Could not generate the onboarding doc right now.';
+    console.error('[onboarding]', e);
     try {
-      sse(res, 'error', { message });
+      sse(res, 'error', { message: humanizeLLMError(e) });
       res.end();
     } catch {
       /* closed */

@@ -1,21 +1,15 @@
 import { useCallback, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertCircle, FileText, GitCompareArrows, GitPullRequest, MessageSquareText, ScrollText } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import Loader from './components/Loader';
 import Header from './components/Header';
 import InputZone from './components/InputZone';
 import PipelineStepper from './components/PipelineStepper';
-import ResultsHeader from './components/ResultsHeader';
-import AdrCard from './components/AdrCard';
-import AskPanel from './components/AskPanel';
-import OnboardingPanel from './components/OnboardingPanel';
-import PrReviewPanel from './components/PrReviewPanel';
-import DriftPanel from './components/DriftPanel';
+import ResultsView from './components/ResultsView';
 import { analyze } from './lib/api';
 import type { ADR, PipelineStage, RepoProfileLite } from './types';
 
 type View = 'idle' | 'analyzing' | 'results';
-type Tab = 'adrs' | 'ask' | 'onboarding' | 'pr' | 'drift';
 
 interface ErrorState {
   message: string;
@@ -31,7 +25,6 @@ export default function App() {
 
   const [profile, setProfile] = useState<RepoProfileLite | null>(null);
   const [adrs, setAdrs] = useState<ADR[]>([]);
-  const [tab, setTab] = useState<Tab>('adrs');
   const [onboardingDoc, setOnboardingDoc] = useState('');
   const [pat, setPat] = useState('');
 
@@ -41,7 +34,6 @@ export default function App() {
     setProfile(null);
     setAdrs([]);
     setOnboardingDoc('');
-    setTab('adrs');
     setStage('fetching');
     setStageDetail(undefined);
     setView('analyzing');
@@ -77,7 +69,7 @@ export default function App() {
 
       {booted && (
         <div className="bg-grid min-h-full">
-          <div className="mx-auto max-w-5xl px-5 pb-24">
+          <div className="mx-auto max-w-6xl px-5 pb-24">
             <Header />
 
             <main className="mt-10">
@@ -112,52 +104,15 @@ export default function App() {
                 )}
 
                 {view === 'results' && profile && (
-                  <motion.div
-                    key="results"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="space-y-6"
-                  >
-                    <ResultsHeader profile={profile} adrs={adrs} onboardingDoc={onboardingDoc || null} onReset={reset} />
-                    <Tabs tab={tab} setTab={setTab} adrCount={adrs.length} />
-
-                    <div className="mx-auto w-full max-w-3xl">
-                      <AnimatePresence mode="wait">
-                        {tab === 'adrs' && (
-                          <motion.div key="adrs" {...fade} className="space-y-3">
-                            {adrs.map((adr, i) => (
-                              <AdrCard key={adr.id} adr={adr} index={i} />
-                            ))}
-                          </motion.div>
-                        )}
-                        {tab === 'ask' && (
-                          <motion.div key="ask" {...fade} className="card p-5">
-                            <AskPanel profile={profile} pat={pat} />
-                          </motion.div>
-                        )}
-                        {tab === 'onboarding' && (
-                          <motion.div key="onboarding" {...fade} className="card p-6">
-                            <OnboardingPanel
-                              profile={profile}
-                              adrs={adrs}
-                              pat={pat}
-                              doc={onboardingDoc}
-                              setDoc={setOnboardingDoc}
-                            />
-                          </motion.div>
-                        )}
-                        {tab === 'pr' && (
-                          <motion.div key="pr" {...fade} className="card p-6">
-                            <PrReviewPanel profile={profile} adrs={adrs} pat={pat} />
-                          </motion.div>
-                        )}
-                        {tab === 'drift' && (
-                          <motion.div key="drift" {...fade} className="card p-6">
-                            <DriftPanel profile={profile} adrs={adrs} pat={pat} />
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
+                  <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <ResultsView
+                      profile={profile}
+                      adrs={adrs}
+                      pat={pat}
+                      onboardingDoc={onboardingDoc}
+                      setOnboardingDoc={setOnboardingDoc}
+                      onReset={reset}
+                    />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -167,48 +122,6 @@ export default function App() {
         </div>
       )}
     </>
-  );
-}
-
-const fade = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -8 },
-  transition: { duration: 0.25 },
-};
-
-function Tabs({ tab, setTab, adrCount }: { tab: Tab; setTab: (t: Tab) => void; adrCount: number }) {
-  const items: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: 'adrs', label: `Decisions (${adrCount})`, icon: <ScrollText className="h-4 w-4" /> },
-    { key: 'ask', label: 'Ask', icon: <MessageSquareText className="h-4 w-4" /> },
-    { key: 'onboarding', label: 'Onboarding', icon: <FileText className="h-4 w-4" /> },
-    { key: 'pr', label: 'PR review', icon: <GitPullRequest className="h-4 w-4" /> },
-    { key: 'drift', label: 'Drift map', icon: <GitCompareArrows className="h-4 w-4" /> },
-  ];
-  return (
-    <div className="mx-auto flex w-full max-w-3xl gap-1 rounded-xl border border-white/5 bg-ink-850/60 p-1">
-      {items.map((it) => (
-        <button
-          key={it.key}
-          onClick={() => setTab(it.key)}
-          className={`relative flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
-            tab === it.key ? 'text-white' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          {tab === it.key && (
-            <motion.span
-              layoutId="tab-pill"
-              className="absolute inset-0 rounded-lg bg-accent/15 ring-1 ring-accent/30"
-              transition={{ type: 'spring', stiffness: 400, damping: 32 }}
-            />
-          )}
-          <span className="relative z-10 flex items-center gap-2">
-            {it.icon}
-            <span className="hidden sm:inline">{it.label}</span>
-          </span>
-        </button>
-      ))}
-    </div>
   );
 }
 

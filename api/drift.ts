@@ -5,7 +5,7 @@ import { readBody, sendError, type Req, type Res } from './_lib/http.js';
 import { GitHubError, parseRepoUrl } from './_lib/github.js';
 import { buildRepoProfile } from './_lib/ingest.js';
 import { driftUserPrompt, DRIFT_SYSTEM } from './_lib/prompts.js';
-import { extractJson, generate, isLLMConfigured, LLMConfigError } from './_lib/llm.js';
+import { extractJson, generate, humanizeLLMError, isLLMConfigured, LLMConfigError } from './_lib/llm.js';
 import { cacheProfile, getCached } from './_lib/cache.js';
 import type { ADR, DriftMap, RepoProfile } from './_lib/schema.js';
 
@@ -72,8 +72,9 @@ export default async function handler(req: Req, res: Res) {
     };
     res.status(200).json(map);
   } catch (e) {
+    console.error('[drift]', e);
     if (e instanceof GitHubError) return sendError(res, { status: e.status || 500, message: e.message });
     if (e instanceof LLMConfigError) return sendError(res, { status: 503, message: e.message });
-    return sendError(res, { status: 500, message: 'Could not map drift right now. Please try again.' });
+    return sendError(res, { status: 500, message: humanizeLLMError(e) });
   }
 }

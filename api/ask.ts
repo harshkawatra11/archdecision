@@ -5,7 +5,7 @@ import { GitHubError, getFileContent, parseRepoUrl } from './_lib/github.js';
 import { buildRepoProfile } from './_lib/ingest.js';
 import { profileForPrompt } from './_lib/profile.js';
 import { askUserPrompt, ASK_SYSTEM, parseSourcesBlock } from './_lib/prompts.js';
-import { generateStream, isLLMConfigured, LLMConfigError } from './_lib/llm.js';
+import { generateStream, humanizeLLMError, isLLMConfigured, LLMConfigError } from './_lib/llm.js';
 import { cacheProfile, getCached } from './_lib/cache.js';
 import type { AskRequest, RepoProfile } from './_lib/schema.js';
 
@@ -126,10 +126,8 @@ function jsonError(res: Res, e: unknown) {
 }
 
 function streamError(res: Res, e: unknown) {
-  const message =
-    e instanceof GitHubError || e instanceof LLMConfigError
-      ? e.message
-      : 'Could not answer that right now. Please try again.';
+  console.error('[ask]', e);
+  const message = e instanceof GitHubError ? e.message : humanizeLLMError(e);
   try {
     sse(res, 'error', { message });
     res.end();

@@ -3,7 +3,7 @@
 import { readBody, sendError, type Req, type Res } from './_lib/http.js';
 import { GitHubError, getPullRequestFiles, parsePrUrl } from './_lib/github.js';
 import { prUserPrompt, PR_SYSTEM } from './_lib/prompts.js';
-import { extractJson, generate, isLLMConfigured, LLMConfigError } from './_lib/llm.js';
+import { extractJson, generate, humanizeLLMError, isLLMConfigured, LLMConfigError } from './_lib/llm.js';
 import type { ADR, PRReview } from './_lib/schema.js';
 
 interface Body {
@@ -50,8 +50,9 @@ export default async function handler(req: Req, res: Res) {
     };
     res.status(200).json(review);
   } catch (e) {
+    console.error('[pr-review]', e);
     if (e instanceof GitHubError) return sendError(res, { status: e.status || 500, message: e.message });
     if (e instanceof LLMConfigError) return sendError(res, { status: 503, message: e.message });
-    return sendError(res, { status: 500, message: 'Could not review that PR right now. Please try again.' });
+    return sendError(res, { status: 500, message: humanizeLLMError(e) });
   }
 }
