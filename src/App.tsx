@@ -1,6 +1,14 @@
 import { useCallback, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertCircle } from 'lucide-react';
+import {
+  AlertCircle,
+  ChevronRight,
+  FileText,
+  GitCompareArrows,
+  GitPullRequest,
+  MessageSquareText,
+  ScrollText,
+} from 'lucide-react';
 import Loader from './components/Loader';
 import Header from './components/Header';
 import InputZone from './components/InputZone';
@@ -142,45 +150,121 @@ function ErrorBanner({ error }: { error: ErrorState }) {
 }
 
 function FeatureStrip() {
-  const features = [
-    { title: 'Grounded ADRs', body: 'Every decision cites the dependency, file, or config it was inferred from.', tag: 'Core' },
-    { title: 'Ask your codebase', body: 'Plain-English questions, answered with file citations — not hallucinations.', tag: 'Core' },
-    { title: 'Onboarding doc', body: 'The day-one guide every team needs, generated and ready to commit.', tag: 'Core' },
-    { title: 'PR architectural review', body: 'Check a pull request against the ADRs and flag likely violations.', tag: 'Stretch' },
-    { title: 'Tech debt drift map', body: 'See where the code has diverged from the architecture it was built on.', tag: 'Stretch' },
+  const core = [
+    {
+      icon: ScrollText,
+      title: 'Grounded ADRs',
+      body: 'Five to eight Architecture Decision Records — every claim cites the dependency, file, or config it was inferred from.',
+    },
+    {
+      icon: MessageSquareText,
+      title: 'Ask your codebase',
+      body: 'Plain-English questions answered from the repo itself, with file citations — not generic hallucinations.',
+    },
+    {
+      icon: FileText,
+      title: 'Onboarding doc',
+      body: 'The day-one guide every team needs and nobody writes — generated, sectioned, and ready to commit.',
+    },
   ];
+  const stretch = [
+    {
+      icon: GitPullRequest,
+      title: 'PR architectural review',
+      body: 'Check a pull request against the decisions and flag likely violations.',
+    },
+    {
+      icon: GitCompareArrows,
+      title: 'Tech-debt drift map',
+      body: 'See where the code has diverged from the architecture it was built on.',
+    },
+  ];
+
   return (
-    <div className="mx-auto mt-16 grid max-w-3xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {features.map((f, i) => (
-        <motion.div
-          key={f.title}
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 + i * 0.08 }}
-          className="card p-4"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-slate-100">{f.title}</h3>
-            <span
-              className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-                f.tag === 'Core' ? 'bg-accent/15 text-accent-soft' : 'bg-white/5 text-slate-500'
-              }`}
-            >
-              {f.tag}
-            </span>
+    <div className="mx-auto mt-20 max-w-4xl">
+      {/* How it works */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-0"
+      >
+        {[
+          { n: '01', label: 'Ingest', sub: 'tree, manifests, signal files' },
+          { n: '02', label: 'Profile', sub: 'compact grounded context' },
+          { n: '03', label: 'Infer', sub: 'decisions with evidence' },
+        ].map((s, i) => (
+          <div key={s.n} className="flex items-center">
+            <div className="flex items-center gap-3 px-5">
+              <span className="font-mono text-[11px] text-accent-soft/70">{s.n}</span>
+              <div className="leading-tight">
+                <p className="text-[13px] font-medium text-slate-200">{s.label}</p>
+                <p className="text-[11px] text-slate-600">{s.sub}</p>
+              </div>
+            </div>
+            {i < 2 && <ChevronRight className="hidden h-4 w-4 text-slate-700 sm:block" />}
           </div>
-          <p className="mt-1.5 text-xs leading-relaxed text-slate-400">{f.body}</p>
-        </motion.div>
-      ))}
+        ))}
+      </motion.div>
+
+      {/* Core features */}
+      <div className="mt-10 grid gap-3 sm:grid-cols-3">
+        {core.map((f, i) => (
+          <motion.div
+            key={f.title}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 + i * 0.08 }}
+            className="group rounded-xl border border-white/[0.07] bg-ink-900/60 p-5 transition hover:border-accent/25 hover:bg-ink-900"
+          >
+            <span className="grid h-9 w-9 place-items-center rounded-lg bg-accent/10 ring-1 ring-accent/20 transition group-hover:bg-accent/15">
+              <f.icon className="h-4 w-4 text-accent-soft" />
+            </span>
+            <h3 className="mt-3.5 text-[14px] font-semibold text-slate-100">{f.title}</h3>
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-slate-500">{f.body}</p>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Stretch features */}
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        {stretch.map((f, i) => (
+          <motion.div
+            key={f.title}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 + i * 0.08 }}
+            className="group flex items-start gap-4 rounded-xl border border-white/[0.05] bg-white/[0.015] p-4 transition hover:border-white/15"
+          >
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[0.04] ring-1 ring-white/10">
+              <f.icon className="h-4 w-4 text-slate-400" />
+            </span>
+            <div>
+              <h3 className="flex items-center gap-2 text-[13px] font-semibold text-slate-200">
+                {f.title}
+                <span className="rounded bg-white/[0.05] px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-slate-500">
+                  Stretch
+                </span>
+              </h3>
+              <p className="mt-1 text-[12px] leading-relaxed text-slate-500">{f.body}</p>
+            </div>
+          </motion.div>
+        ))}
+      </div>
     </div>
   );
 }
 
 function Footer() {
   return (
-    <footer className="border-t border-white/5 py-6 text-center text-xs text-slate-600">
-      ArchDecision — institutional memory your codebase never had. ADRs are inferred drafts to confirm, not ground
-      truth.
+    <footer className="border-t border-white/5 py-7">
+      <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-5 text-[11px] text-slate-600 sm:flex-row">
+        <span>
+          <span className="font-medium text-slate-500">ArchDecision</span> — institutional memory your codebase never
+          had.
+        </span>
+        <span>ADRs are inferred drafts to confirm, not ground truth.</span>
+      </div>
     </footer>
   );
 }
