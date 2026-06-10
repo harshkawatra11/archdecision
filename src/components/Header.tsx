@@ -31,16 +31,13 @@ export default function Header() {
         </div>
       </div>
       <a
-        data-anim
         href={GITHUB_REPO_URL}
         target="_blank"
         rel="noreferrer noopener"
-        className="group inline-flex items-center gap-2.5 self-center rounded-full border border-ink-600 bg-black py-1.5 pl-2 pr-4 transition hover:border-ink-500"
+        className="group inline-flex items-center gap-2 rounded-md border border-[rgba(240,246,252,0.1)] bg-[#21262d] px-3 py-1.5 text-[13px] font-semibold text-slate-100 shadow-sm transition hover:border-[rgba(240,246,252,0.2)] hover:bg-[#30363d]"
       >
-        <span className="grid h-6 w-6 place-items-center rounded-full bg-black">
-          <Github className="h-[18px] w-[18px] text-[#8b949e] transition group-hover:text-slate-200" fill="currentColor" strokeWidth={0} />
-        </span>
-        <span className="text-[13px] font-semibold text-slate-200">GitHub Repo</span>
+        <Github className="h-4 w-4 text-slate-300 transition group-hover:text-white" fill="currentColor" strokeWidth={0} />
+        GitHub
       </a>
     </header>
   );

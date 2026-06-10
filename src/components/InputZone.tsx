@@ -37,19 +37,19 @@ export default function InputZone({ onAnalyze, busy }: Props) {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
           </span>
-          Grounded in your code — never a confident hallucination
+          Evidence-grounded · Zero hallucinations
         </div>
 
         <h2 className="text-balance text-4xl font-semibold leading-[1.08] tracking-tight text-slate-100 sm:text-[3.4rem]">
-          The AI that explains{' '}
+          Reverse-engineer the{' '}
           <span className="bg-gradient-to-r from-accent-soft via-accent to-accent-soft bg-clip-text text-transparent">
-            why
+            architecture
           </span>{' '}
-          your codebase is the way it is
+          behind any codebase
         </h2>
         <p className="mx-auto mt-5 max-w-xl text-pretty text-[15px] leading-relaxed text-slate-400">
-          Paste a GitHub repo. In ~60 seconds, get grounded Architecture Decision Records, a codebase
-          you can question in plain English, and a one-click onboarding doc.
+          Point at a GitHub repo. In ~60 seconds, get grounded Architecture Decision Records,
+          plain-English answers about the code, and a ready-to-commit onboarding doc.
         </p>
 
         <div className="mt-10">

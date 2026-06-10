@@ -245,12 +245,7 @@ function FeatureStrip() {
               <f.icon className="h-4 w-4 text-slate-400" />
             </span>
             <div>
-              <h3 className="flex items-center gap-2 text-[13px] font-semibold text-slate-200">
-                {f.title}
-                <span className="rounded bg-white/[0.05] px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-slate-500">
-                  Stretch
-                </span>
-              </h3>
+              <h3 className="text-[13px] font-semibold text-slate-200">{f.title}</h3>
               <p className="mt-1 text-[12px] leading-relaxed text-slate-500">{f.body}</p>
             </div>
           </motion.div>
