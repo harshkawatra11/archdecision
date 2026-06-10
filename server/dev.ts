@@ -19,6 +19,7 @@ import analyze from '../api/analyze.js';
 import ask from '../api/ask.js';
 import onboarding from '../api/onboarding.js';
 import prReview from '../api/pr-review.js';
+import drift from '../api/drift.js';
 import health from '../api/health.js';
 
 const app = express();
@@ -37,6 +38,7 @@ app.post('/api/analyze', mount(analyze as Handler));
 app.post('/api/ask', mount(ask as Handler));
 app.post('/api/onboarding', mount(onboarding as Handler));
 app.post('/api/pr-review', mount(prReview as Handler));
+app.post('/api/drift', mount(drift as Handler));
 
 const port = Number(process.env.API_PORT || 3001);
 app.listen(port, () => {

@@ -80,3 +80,18 @@ export interface PRReview {
   findings: PRFinding[];
   truncated: boolean;
 }
+
+export interface DriftFinding {
+  title: string;
+  adrId: string;
+  severity: 'aligned' | 'minor' | 'major';
+  observation: string;
+  expectation: string;
+  evidence: string[];
+  recommendation: string;
+}
+
+export interface DriftMap {
+  summary: string;
+  findings: DriftFinding[];
+}

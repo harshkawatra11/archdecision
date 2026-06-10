@@ -1,7 +1,7 @@
 // Browser API client. Parses Server-Sent Events from POST responses via fetch streaming
 // (EventSource cannot POST), and exposes typed callbacks per endpoint.
 
-import type { AnalyzeResult, PipelineStage, PRReview } from '../types';
+import type { AnalyzeResult, DriftMap, PipelineStage, PRReview } from '../types';
 
 export class ApiError extends Error {
   hint?: string | null;
@@ -135,4 +135,20 @@ export async function prReview(body: { prUrl: string; adrs: unknown[]; pat?: str
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new ApiError(data.error || 'PR review failed.', data.hint);
   return data as PRReview;
+}
+
+export async function drift(body: {
+  repoUrl: string;
+  sha: string;
+  adrs: unknown[];
+  pat?: string;
+}): Promise<DriftMap> {
+  const res = await fetch('/api/drift', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new ApiError(data.error || 'Drift analysis failed.', data.hint);
+  return data as DriftMap;
 }

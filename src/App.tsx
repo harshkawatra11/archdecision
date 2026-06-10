@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertCircle, FileText, MessageSquareText, ScrollText } from 'lucide-react';
+import { AlertCircle, FileText, GitCompareArrows, GitPullRequest, MessageSquareText, ScrollText } from 'lucide-react';
 import Loader from './components/Loader';
 import Header from './components/Header';
 import InputZone from './components/InputZone';
@@ -9,11 +9,13 @@ import ResultsHeader from './components/ResultsHeader';
 import AdrCard from './components/AdrCard';
 import AskPanel from './components/AskPanel';
 import OnboardingPanel from './components/OnboardingPanel';
+import PrReviewPanel from './components/PrReviewPanel';
+import DriftPanel from './components/DriftPanel';
 import { analyze } from './lib/api';
 import type { ADR, PipelineStage, RepoProfileLite } from './types';
 
 type View = 'idle' | 'analyzing' | 'results';
-type Tab = 'adrs' | 'ask' | 'onboarding';
+type Tab = 'adrs' | 'ask' | 'onboarding' | 'pr' | 'drift';
 
 interface ErrorState {
   message: string;
@@ -144,6 +146,16 @@ export default function App() {
                             />
                           </motion.div>
                         )}
+                        {tab === 'pr' && (
+                          <motion.div key="pr" {...fade} className="card p-6">
+                            <PrReviewPanel profile={profile} adrs={adrs} pat={pat} />
+                          </motion.div>
+                        )}
+                        {tab === 'drift' && (
+                          <motion.div key="drift" {...fade} className="card p-6">
+                            <DriftPanel profile={profile} adrs={adrs} pat={pat} />
+                          </motion.div>
+                        )}
                       </AnimatePresence>
                     </div>
                   </motion.div>
@@ -167,9 +179,11 @@ const fade = {
 
 function Tabs({ tab, setTab, adrCount }: { tab: Tab; setTab: (t: Tab) => void; adrCount: number }) {
   const items: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: 'adrs', label: `Decision Records (${adrCount})`, icon: <ScrollText className="h-4 w-4" /> },
-    { key: 'ask', label: 'Ask the codebase', icon: <MessageSquareText className="h-4 w-4" /> },
-    { key: 'onboarding', label: 'Onboarding doc', icon: <FileText className="h-4 w-4" /> },
+    { key: 'adrs', label: `Decisions (${adrCount})`, icon: <ScrollText className="h-4 w-4" /> },
+    { key: 'ask', label: 'Ask', icon: <MessageSquareText className="h-4 w-4" /> },
+    { key: 'onboarding', label: 'Onboarding', icon: <FileText className="h-4 w-4" /> },
+    { key: 'pr', label: 'PR review', icon: <GitPullRequest className="h-4 w-4" /> },
+    { key: 'drift', label: 'Drift map', icon: <GitCompareArrows className="h-4 w-4" /> },
   ];
   return (
     <div className="mx-auto flex w-full max-w-3xl gap-1 rounded-xl border border-white/5 bg-ink-850/60 p-1">
@@ -216,21 +230,32 @@ function ErrorBanner({ error }: { error: ErrorState }) {
 
 function FeatureStrip() {
   const features = [
-    { title: 'Grounded ADRs', body: 'Every decision cites the dependency, file, or config it was inferred from.' },
-    { title: 'Ask your codebase', body: 'Plain-English questions, answered with file citations — not hallucinations.' },
-    { title: 'Onboarding doc', body: 'The day-one guide every team needs, generated and ready to commit.' },
+    { title: 'Grounded ADRs', body: 'Every decision cites the dependency, file, or config it was inferred from.', tag: 'Core' },
+    { title: 'Ask your codebase', body: 'Plain-English questions, answered with file citations — not hallucinations.', tag: 'Core' },
+    { title: 'Onboarding doc', body: 'The day-one guide every team needs, generated and ready to commit.', tag: 'Core' },
+    { title: 'PR architectural review', body: 'Check a pull request against the ADRs and flag likely violations.', tag: 'Stretch' },
+    { title: 'Tech debt drift map', body: 'See where the code has diverged from the architecture it was built on.', tag: 'Stretch' },
   ];
   return (
-    <div className="mx-auto mt-16 grid max-w-3xl gap-4 sm:grid-cols-3">
+    <div className="mx-auto mt-16 grid max-w-3xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {features.map((f, i) => (
         <motion.div
           key={f.title}
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 + i * 0.1 }}
+          transition={{ delay: 0.2 + i * 0.08 }}
           className="card p-4"
         >
-          <h3 className="text-sm font-semibold text-slate-100">{f.title}</h3>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-slate-100">{f.title}</h3>
+            <span
+              className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                f.tag === 'Core' ? 'bg-accent/15 text-accent-soft' : 'bg-white/5 text-slate-500'
+              }`}
+            >
+              {f.tag}
+            </span>
+          </div>
           <p className="mt-1.5 text-xs leading-relaxed text-slate-400">{f.body}</p>
         </motion.div>
       ))}

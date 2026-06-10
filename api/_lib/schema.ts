@@ -120,6 +120,23 @@ export interface PRReview {
   truncated: boolean;
 }
 
+// Feature E — Tech Debt Drift Map (PRD §7.5). Where the code has diverged from
+// the architecture its own ADRs describe.
+export interface DriftFinding {
+  title: string; // e.g. "Service boundary eroded in api/"
+  adrId: string; // related ADR id, or "" if none
+  severity: 'aligned' | 'minor' | 'major';
+  observation: string; // what the current code/metrics show
+  expectation: string; // what the decision/intent implied
+  evidence: string[]; // file paths or structural facts
+  recommendation: string; // a concrete next step
+}
+
+export interface DriftMap {
+  summary: string; // one-paragraph "architecture vs reality" overview
+  findings: DriftFinding[];
+}
+
 // ---------------------------------------------------------------------------
 // Validation — lightweight, no external deps. Coerces/repairs where safe and
 // reports what is missing so the LLM layer can do a single repair retry.

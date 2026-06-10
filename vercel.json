@@ -7,7 +7,8 @@
     "api/analyze.ts": { "maxDuration": 60 },
     "api/ask.ts": { "maxDuration": 60 },
     "api/onboarding.ts": { "maxDuration": 60 },
-    "api/pr-review.ts": { "maxDuration": 60 }
+    "api/pr-review.ts": { "maxDuration": 60 },
+    "api/drift.ts": { "maxDuration": 60 }
   },
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
 }
