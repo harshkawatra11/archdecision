@@ -76,11 +76,16 @@ export default function App() {
       <AnimatePresence>{!booted && <Loader onDone={() => setBooted(true)} />}</AnimatePresence>
 
       {booted && (
-        <div className="bg-grid min-h-full">
-          <div className="mx-auto max-w-6xl px-5 pb-24">
-            <Header />
+        <div className="min-h-full">
+          {/* GitHub-style black header band */}
+          <div className="border-b border-ink-600 bg-ink-950">
+            <div className="mx-auto max-w-6xl px-5">
+              <Header />
+            </div>
+          </div>
 
-            <main className="mt-10">
+          <div className="mx-auto max-w-6xl px-5 pb-24">
+            <main className="mt-8">
               <AnimatePresence mode="wait">
                 {view === 'idle' && (
                   <motion.div

@@ -9,19 +9,20 @@ export default {
         mono: ['"JetBrains Mono"', '"Fira Code"', 'ui-monospace', 'monospace'],
       },
       colors: {
+        // GitHub dark palette: 950 = header black, 900 = canvas, 850 = subtle, 600 = border.
         ink: {
-          950: '#070809',
-          900: '#0b0d10',
-          850: '#0f1216',
-          800: '#14181d',
-          700: '#1b2129',
-          600: '#252d38',
-          500: '#3a4756',
+          950: '#010409',
+          900: '#0d1117',
+          850: '#161b22',
+          800: '#1c2128',
+          700: '#262c36',
+          600: '#30363d',
+          500: '#444c56',
         },
         accent: {
-          DEFAULT: '#5b8cff',
-          soft: '#8fb0ff',
-          glow: 'rgba(91,140,255,0.18)',
+          DEFAULT: '#4493f8',
+          soft: '#79b8ff',
+          glow: 'rgba(68,147,248,0.15)',
         },
       },
       boxShadow: {
