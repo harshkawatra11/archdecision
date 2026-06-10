@@ -40,33 +40,22 @@ export default function PrReviewPanel({ profile, adrs, pat }: Props) {
 
   return (
     <div>
-      <div className="flex items-start gap-3">
-        <GitPullRequest className="mt-2.5 h-5 w-5 shrink-0 text-slate-600" />
-        <div className="flex-1">
-          <p className="mb-3 text-sm text-slate-400">
-            Paste a pull request from{' '}
-            <span className="font-mono text-slate-300">
-              {profile.owner}/{profile.repo}
-            </span>{' '}
-            — it's checked against the {adrs.length} decisions above and flags likely architectural violations.
-          </p>
-          <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-ink-900 p-2 pl-4 focus-within:border-accent/40">
-            <input
-              value={prUrl}
-              onChange={(e) => setPrUrl(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && run()}
-              placeholder={`https://github.com/${profile.owner}/${profile.repo}/pull/123`}
-              className="flex-1 bg-transparent py-1.5 font-mono text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none"
-            />
-            <button
-              onClick={run}
-              disabled={busy || !prUrl.trim()}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-sm font-medium text-white transition enabled:hover:bg-accent-soft disabled:opacity-40"
-            >
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Review'}
-            </button>
-          </div>
-        </div>
+      <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-ink-950/60 p-2 pl-4 focus-within:border-accent/40">
+        <GitPullRequest className="h-4 w-4 shrink-0 text-slate-600" />
+        <input
+          value={prUrl}
+          onChange={(e) => setPrUrl(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && run()}
+          placeholder={`https://github.com/${profile.owner}/${profile.repo}/pull/123`}
+          className="flex-1 bg-transparent py-1.5 font-mono text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none"
+        />
+        <button
+          onClick={run}
+          disabled={busy || !prUrl.trim()}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-sm font-medium text-white transition enabled:hover:bg-accent-soft disabled:opacity-40"
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Review'}
+        </button>
       </div>
 
       {error && (

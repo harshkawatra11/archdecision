@@ -47,8 +47,8 @@ export default function DriftPanel({ profile, adrs, pat }: Props) {
       <div className="grid place-items-center py-10 text-center">
         <GitCompareArrows className="mb-3 h-8 w-8 text-slate-700" />
         <p className="mb-4 max-w-md text-sm text-slate-400">
-          Your architecture vs. your reality — where the code has drifted from the decisions it was built on,
-          grounded in the repo's current structure.
+          Compares the {adrs.length} recorded decisions against the repo's current structural metrics and flags
+          divergence — each finding grounded in evidence.
         </p>
         <button
           onClick={run}
