@@ -1,0 +1,1 @@
+{"root":["./vite.config.ts","./server/dev.ts","./api/analyze.ts","./api/ask.ts","./api/health.ts","./api/onboarding.ts","./api/pr-review.ts","./api/_lib/cache.ts","./api/_lib/github.ts","./api/_lib/http.ts","./api/_lib/ingest.ts","./api/_lib/llm.ts","./api/_lib/profile.ts","./api/_lib/prompts.ts","./api/_lib/schema.ts"],"version":"5.9.3"}

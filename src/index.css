@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-ink-950 text-slate-200 antialiased;
+  background-image:
+    radial-gradient(60rem 40rem at 80% -10%, rgba(91, 140, 255, 0.08), transparent 60%),
+    radial-gradient(50rem 40rem at -10% 10%, rgba(91, 140, 255, 0.05), transparent 55%);
+  background-attachment: fixed;
+}
+
+/* Subtle dotted grid in the background. */
+.bg-grid {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.glass {
+  @apply bg-ink-850/70 backdrop-blur-xl border border-white/[0.06];
+}
+
+.card {
+  @apply glass rounded-2xl shadow-card;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-ink-600 rounded-full;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Markdown prose styling for ADRs, answers, onboarding docs. */
+.prose-arch {
+  @apply text-[0.95rem] leading-relaxed text-slate-300;
+}
+.prose-arch h1 { @apply text-xl font-semibold text-slate-100 mt-6 mb-3; }
+.prose-arch h2 { @apply text-lg font-semibold text-slate-100 mt-6 mb-2 pb-1 border-b border-white/5; }
+.prose-arch h3 { @apply text-base font-semibold text-slate-200 mt-4 mb-2; }
+.prose-arch p { @apply my-3; }
+.prose-arch ul { @apply list-disc pl-5 my-3 space-y-1.5; }
+.prose-arch ol { @apply list-decimal pl-5 my-3 space-y-1.5; }
+.prose-arch a { @apply text-accent-soft underline decoration-accent/40 hover:decoration-accent; }
+.prose-arch code { @apply font-mono text-[0.85em] bg-ink-800 text-accent-soft px-1.5 py-0.5 rounded; }
+.prose-arch pre { @apply bg-ink-900 border border-white/5 rounded-xl p-4 my-4 overflow-x-auto text-[0.82rem]; }
+.prose-arch pre code { @apply bg-transparent p-0 text-slate-300; }
+.prose-arch strong { @apply text-slate-100 font-semibold; }
+.prose-arch blockquote { @apply border-l-2 border-accent/40 pl-4 italic text-slate-400 my-3; }
+.prose-arch table { @apply w-full text-sm my-4 border-collapse; }
+.prose-arch th, .prose-arch td { @apply border border-white/5 px-3 py-1.5 text-left; }
+
+@keyframes blink { 50% { opacity: 0; } }
+.caret::after {
+  content: '▋';
+  @apply text-accent ml-0.5;
+  animation: blink 1s step-end infinite;
+}

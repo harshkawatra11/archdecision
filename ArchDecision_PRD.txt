@@ -1,0 +1,1436 @@
+================================================================================
+                        ARCHDECISION — PRODUCT REQUIREMENTS DOCUMENT
+                  The AI that explains why your codebase is the way it is
+================================================================================
+
+Document version:    1.0
+Prepared for:        Microsoft Build AI Hackathon 2026
+Build window:        5 days, solo developer + Claude Code
+Status:              Build-ready specification
+Classification:      Internal engineering + product spec
+
+--------------------------------------------------------------------------------
+TABLE OF CONTENTS
+--------------------------------------------------------------------------------
+0.  How to read this document
+1.  Executive summary
+2.  The problem
+3.  Target users and personas
+4.  Competitive landscape and positioning
+5.  Product vision and principles
+6.  Scope — what we are and are NOT building
+7.  Feature specifications (the heart of this document)
+       7.1  Feature A — ADR Generator (core)
+       7.2  Feature B — Ask Your Codebase (core)
+       7.3  Feature C — Onboarding Doc Generator (core)
+       7.4  Feature D — PR Architectural Review (stretch)
+       7.5  Feature E — Tech Debt Drift Map (stretch)
+8.  End-to-end user flows
+9.  System architecture
+10. Technology stack and justification
+11. Data models and schemas
+12. API design — every endpoint
+13. The repo ingestion pipeline (how we read GitHub)
+14. The LLM layer — prompts, chunking, grounding
+15. Frontend specification
+16. Non-functional requirements (performance, limits, cost)
+17. Security, privacy, and rate limits
+18. Error handling and edge cases
+19. The 5-day build plan (hour by hour)
+20. The demo script (what judges see)
+21. Testing and acceptance criteria
+22. Deployment
+23. Post-hackathon roadmap
+24. Risks and mitigations
+25. Appendix — prompt library, sample outputs, glossary
+
+================================================================================
+0.  HOW TO READ THIS DOCUMENT
+================================================================================
+
+This PRD is written to be handed directly to Claude Code, section by section,
+as build instructions. Every feature section follows the same structure:
+
+    WHY USERS CARE      — the human reason this exists
+    WHAT IT DOES        — plain-English behavior
+    HOW IT WORKS        — the mechanism
+    MVP IMPLEMENTATION  — exactly what to build in the hackathon
+    ARCHITECTURE        — the technical wiring
+    DATA                — what gets stored / passed
+    EDGE CASES          — what breaks and how we handle it
+    DEMO MOMENT         — how this feature shows on stage
+
+The document assumes:
+    - Solo developer working with Claude Code
+    - 5 calendar days, realistically ~40 focused hours
+    - Zero paid API credits
+    - Free-tier everything: Gemini 2.5 Flash, GitHub public API, free hosting
+
+The golden rule for every decision in this doc: optimize for a 4-minute live
+demo that makes a judge picture their own codebase. If a feature does not
+serve that, it is a stretch goal, not a core goal.
+
+================================================================================
+1.  EXECUTIVE SUMMARY
+================================================================================
+
+ArchDecision is a web app that reads any GitHub repository and reverse-engineers
+the architectural decisions baked into it — then lets you interrogate those
+decisions in plain English.
+
+You paste a repo URL. In about 60 seconds the app produces:
+
+    1. A set of Architecture Decision Records (ADRs) — structured documents that
+       explain WHY the codebase is built the way it is: why this database, why
+       this framework, why this folder structure, what was likely rejected, and
+       what tradeoffs were accepted.
+
+    2. A conversational interface ("Ask Your Codebase") where a new engineer can
+       type "why do we use Redis here?" and get an answer grounded in the actual
+       code, not a generic LLM hallucination.
+
+    3. A one-click onboarding document — the "how this codebase works" guide that
+       every team needs and nobody has time to write.
+
+The core insight: codebases are full of decisions whose reasoning has evaporated.
+The person who chose PostgreSQL left. The Slack thread is gone. New engineers
+waste weeks rediscovering context, and teams repeat solved mistakes. ArchDecision
+recovers that lost reasoning from the one source of truth that never leaves —
+the code itself.
+
+One sentence pitch:
+    "ArchDecision is the institutional memory your codebase never had —
+     it reads your repo and tells new engineers why it's built the way it is."
+
+Why it wins a hackathon:
+    - The demo is visceral. Judges instantly map it to their own team's pain.
+    - It works on ANY public repo live, including the judges' own.
+    - It is buildable solo in 5 days on entirely free infrastructure.
+    - The category (automated architecture knowledge capture) has near-zero
+      competition and ~0.1% adoption of existing manual tools (ADR templates).
+
+================================================================================
+2.  THE PROBLEM
+================================================================================
+
+2.1  The core problem
+
+Software teams make hundreds of consequential decisions while building a system:
+which database, which framework, monolith vs microservices, build vs buy for
+auth, sync vs async, REST vs GraphQL, how to structure modules, where to put
+business logic. Each decision has a reason and a set of rejected alternatives.
+
+That reasoning lives in three places, all of which decay:
+    - Human memory (the engineer leaves, or simply forgets)
+    - Ephemeral chat (Slack/Teams threads nobody bookmarked)
+    - Meetings (no record at all)
+
+The code persists. The reasoning does not. This creates three expensive failures:
+
+    FAILURE 1 — Onboarding tax.
+        A new engineer at a non-trivial codebase loses 2-6 weeks to "why is it
+        like this?" archaeology. They read code that makes no sense without the
+        context that was never written down.
+
+    FAILURE 2 — Repeated mistakes.
+        Teams re-try approaches that were already tried and abandoned, because
+        the "we tried that, here's why it failed" knowledge left with someone.
+
+    FAILURE 3 — Accidental erosion.
+        An engineer refactors something that was built deliberately, breaking an
+        invariant nobody documented. The decision is undone by someone who never
+        knew it was a decision.
+
+2.2  Why this problem is real and not manufactured
+
+Architecture Decision Records (ADRs) already exist as a known best practice —
+Michael Nygard popularized the format in 2011, and major engineering orgs
+recommend them. The fact that the SOLUTION format already exists and is widely
+endorsed, yet adoption is near-zero, is the strongest possible signal: teams
+KNOW they should capture decisions, they just never do, because writing ADRs by
+hand is tedious work with delayed payoff. Nobody writes the doc for the engineer
+who joins in eight months.
+
+ArchDecision removes the tedium. The decision record writes itself.
+
+2.3  Why now
+
+Two things make this newly possible:
+    - LLMs can now read a codebase's structure, dependency manifests, and code
+      patterns well enough to infer intent — not just summarize syntax.
+    - Free, fast, large-context models (Gemini 2.5 Flash, 1M token context)
+      make it economically trivial to feed substantial repo context to a model.
+
+The combination — automated inference + cheap large context — did not exist two
+years ago. This is the timing argument.
+
+2.4  Assumptions we are making (and must be honest about)
+
+    ASSUMPTION 1: The code contains enough signal to infer real decisions.
+        Mostly true for stack/framework/structure decisions, which are encoded
+        in manifests, imports, and folder layout. Less true for decisions whose
+        only trace was a conversation. We are honest in the product: ADRs are
+        labeled "inferred" with a confidence level, never presented as ground
+        truth. This is a feature, not a hedge — it makes the output trustworthy.
+
+    ASSUMPTION 2: Users will trust an inferred decision record.
+        We earn trust by GROUNDING every claim in specific evidence from the
+        repo (this file, this dependency, this pattern). An ungrounded ADR is
+        worthless; a grounded one is auditable.
+
+    ASSUMPTION 3: The demo repo will be representative.
+        We mitigate by testing on a spread: a small clean repo, a large messy
+        one, and a non-JS repo, before demo day.
+
+================================================================================
+3.  TARGET USERS AND PERSONAS
+================================================================================
+
+3.1  Primary persona — "The New Joiner"
+
+    Name:        Priya, senior backend engineer, week 1 at a new company
+    Pain:        Inherited a 60k-line codebase with a 3-line README. Spends her
+                 first sprint reading code trying to understand why it's shaped
+                 the way it is. Asks teammates, who half-remember.
+    Job to be done:
+                 "Get me to productive understanding of this codebase in hours,
+                  not weeks."
+    How ArchDecision serves her:
+                 She runs the repo through ArchDecision before day one. Reads the
+                 onboarding doc, skims the ADRs, and uses Ask Your Codebase to
+                 answer the specific questions her reading surfaces.
+
+3.2  Secondary persona — "The Tech Lead"
+
+    Name:        Marcus, staff engineer, owns a service his team built 2 years ago
+    Pain:        Constantly interrupted by "why is this like this?" questions.
+                 The original context is in his head and it's a bottleneck.
+    Job to be done:
+                 "Externalize what's in my head so the team stops asking me."
+    How ArchDecision serves him:
+                 Generates the ADRs once. Now the answer to "why Redis?" is a
+                 link, not a 20-minute conversation.
+
+3.3  Tertiary persona — "The Open Source Maintainer"
+
+    Name:        Lena, maintains a popular OSS library
+    Pain:        Contributors open PRs that violate unstated architectural norms.
+                 She rejects them and explains the same rationale repeatedly.
+    Job to be done:
+                 "Make my project's architectural decisions legible to drive-by
+                  contributors."
+    How ArchDecision serves her:
+                 ADRs become CONTRIBUTING-adjacent docs. PR review (stretch
+                 feature) flags violations automatically.
+
+3.4  The judge persona (do not ignore this one)
+
+    The hackathon judge is an engineer or PM who has personally felt all three
+    pains above. The single design goal of the demo is to make THIS person
+    picture their own codebase within the first 30 seconds.
+
+================================================================================
+4.  COMPETITIVE LANDSCAPE AND POSITIONING
+================================================================================
+
+4.1  What exists today
+
+    Manual ADR tools (adr-tools CLI, Markdown templates, Log4brains):
+        These help you WRITE ADRs by hand. They do not generate them. Adoption
+        is tiny precisely because writing is the bottleneck. We automate the
+        thing they assume a human does.
+
+    Code documentation generators (Doxygen, JSDoc, Swimm, Mintlify):
+        These document WHAT the code is (API surface, function signatures). They
+        do not explain WHY decisions were made. Different layer of the stack.
+
+    AI code chat (Cursor, GitHub Copilot Chat, Sourcegraph Cody):
+        These answer "what does this function do?" extremely well. They are not
+        oriented around decisions and rationale, and they don't produce durable,
+        shareable decision artifacts. We are decision-and-rationale-first, and
+        artifact-producing.
+
+    Internal wikis (Notion, Confluence):
+        Capture output, go stale, require manual upkeep. The opposite of
+        automated and grounded.
+
+4.2  The gap we occupy
+
+    Nobody automatically infers architectural DECISIONS and their RATIONALE from
+    a codebase and produces a durable, grounded, queryable artifact. That is the
+    open lane.
+
+4.3  Honest competitive risk
+
+    The most credible threat is that an AI code-chat incumbent (Cursor,
+    Sourcegraph) adds a "generate decision records" feature. Our defensibility
+    is not the feature — it's the focus and the artifact format. We make the
+    decision record a first-class, shareable, version-controllable object that
+    lives in the repo (as /docs/adr/*.md), not a transient chat answer. The moat
+    in a real company would be accumulated, human-corrected decision history per
+    repo. For the hackathon, the moat argument is: we are the only ones aimed
+    squarely at this job.
+
+================================================================================
+5.  PRODUCT VISION AND PRINCIPLES
+================================================================================
+
+Vision: Every codebase carries its own explanation. ArchDecision makes that
+explanation legible, queryable, and durable — so knowledge stops leaving when
+people do.
+
+Design principles (these resolve every ambiguous decision in the build):
+
+    P1. GROUNDED OR SILENT.
+        Every claim cites specific evidence from the repo. If we can't ground it,
+        we label it low-confidence or we don't say it. No confident hallucination.
+
+    P2. ZERO SETUP TO FIRST VALUE.
+        The core flow must work from a pasted URL with no login, no install, no
+        config. Friction kills demos and kills adoption.
+
+    P3. ARTIFACTS, NOT JUST ANSWERS.
+        Output is a downloadable, committable Markdown file, not an ephemeral
+        chat bubble. The ADR should be PR-able into /docs/adr/.
+
+    P4. HONEST CONFIDENCE.
+        Inferred reasoning is labeled as inferred. Confidence is shown. This
+        builds trust and is itself a differentiator.
+
+    P5. FAST PERCEIVED SPEED.
+        Stream output token-by-token. Never show a 60-second spinner with no
+        feedback. Show the pipeline working.
+
+================================================================================
+6.  SCOPE — WHAT WE ARE AND ARE NOT BUILDING
+================================================================================
+
+6.1  IN SCOPE for the 5-day hackathon build
+
+    - Public GitHub repo ingestion via URL (optional PAT for private/rate limits)
+    - Repo structure + manifest + key-file analysis
+    - ADR generation (Feature A) — 5 to 8 records
+    - Ask Your Codebase chat (Feature B)
+    - Onboarding doc generation (Feature C)
+    - Markdown export / download of all artifacts
+    - Streaming UI with visible pipeline progress
+    - Deployed, publicly accessible URL
+
+6.2  STRETCH (build only if core is solid and time remains)
+
+    - PR architectural review (Feature D)
+    - Tech debt drift map (Feature E)
+    - GitHub OAuth for private repos and higher rate limits
+    - "Commit ADRs as a PR" button (writes to the repo)
+
+6.3  EXPLICITLY OUT OF SCOPE (do not build, do not get tempted)
+
+    - User accounts / auth / billing
+    - Multi-repo / org-wide analysis
+    - Persistent per-user history dashboards
+    - Real-time collaboration
+    - Any paid Azure service
+    - Mobile native apps
+    - Fine-tuning or custom models
+    - Anything requiring credits
+
+    If a judge asks about these, they are roadmap answers (Section 23), not build
+    items.
+
+================================================================================
+7.  FEATURE SPECIFICATIONS
+================================================================================
+
+--------------------------------------------------------------------------------
+7.1  FEATURE A — ADR GENERATOR  (CORE, build first)
+--------------------------------------------------------------------------------
+
+WHY USERS CARE
+    This is the headline. It turns an opaque codebase into a set of explained
+    decisions. It's the thing a new joiner reads first and the thing a tech lead
+    wishes existed. It is also the most demoable: paste URL, watch decision
+    records appear.
+
+WHAT IT DOES
+    Given a repo, it produces 5-8 Architecture Decision Records. Each ADR follows
+    the industry-standard Nygard format, adapted:
+
+        TITLE         — e.g. "ADR-003: Use PostgreSQL as the primary datastore"
+        STATUS        — Inferred (with confidence: High / Medium / Low)
+        CONTEXT       — the situation that forced a decision, inferred from code
+        DECISION      — what was chosen
+        RATIONALE     — why, grounded in specific repo evidence
+        ALTERNATIVES  — what was likely considered and rejected, and why
+        CONSEQUENCES  — tradeoffs accepted, things now harder/easier
+        EVIDENCE      — the specific files/lines/dependencies this is based on
+
+    The decisions it targets (in priority order):
+        1. Primary datastore choice (from dependency manifest + ORM config)
+        2. Backend framework / language (from manifest + entry points)
+        3. Frontend framework (from package.json + build config)
+        4. Architecture style — monolith / microservices / serverless
+           (from folder structure + deploy config + service count)
+        5. Authentication approach (from auth deps + middleware patterns)
+        6. API style — REST / GraphQL / gRPC (from route definitions + deps)
+        7. State management / caching (Redis, in-memory, etc.)
+        8. Testing strategy (from test framework + coverage of test dirs)
+        9. CI/CD approach (from .github/workflows, Dockerfiles)
+        10. Notable structural patterns (monorepo, layered, hexagonal)
+
+HOW IT WORKS
+    Pipeline:
+        1. Fetch repo metadata + file tree via GitHub API.
+        2. Identify and fetch "signal files": dependency manifests
+           (package.json, requirements.txt, go.mod, pom.xml, Cargo.toml,
+           Gemfile), config files (Dockerfile, docker-compose.yml, *.config.*,
+           .github/workflows/*), README, and a sample of source entry points.
+        3. Build a "repo profile" — a structured summary of stack, structure,
+           dependencies, and patterns.
+        4. Feed the repo profile to Gemini with the ADR generation prompt
+           (Section 14).
+        5. Gemini returns structured JSON, one object per ADR.
+        6. Render each ADR as a card in the UI and as downloadable Markdown.
+
+MVP IMPLEMENTATION
+    - Detect languages from file extensions + manifests.
+    - Parse the top dependency manifest fully; extract direct dependencies.
+    - Pull file tree (recursive) to understand structure; do NOT pull every file.
+    - Pull README + up to ~15 signal files, capped at a total token budget.
+    - Single Gemini call returning a JSON array of ADRs (use response schema /
+      JSON mode for reliability).
+    - Render as collapsible cards + "Download all as .md" button.
+
+ARCHITECTURE
+    Frontend → POST /api/analyze {repoUrl, pat?}
+    Backend  → ingestion pipeline → repo profile → Gemini → JSON ADRs → response
+    Frontend → renders cards, streams status updates during the pipeline
+
+DATA
+    Input:  repoUrl (string), optional pat (string, never logged)
+    Output: ADR[] (see schema in Section 11)
+    Stored: nothing persistent required for MVP (stateless). Optionally cache
+            repo profile in memory keyed by repoUrl+sha for the session.
+
+EDGE CASES
+    - Empty repo / no recognizable stack → return 1 ADR: "Insufficient signal"
+      with guidance, never an error page.
+    - Monorepo with many sub-projects → analyze top-level + flag that it's a
+      monorepo; offer to focus on a subdirectory (stretch).
+    - Huge repo exceeding token budget → sample intelligently (manifests always,
+      then breadth-first file tree, then truncate), and say so in the output.
+    - Private repo without PAT → clear message, link to PAT instructions.
+
+DEMO MOMENT
+    Paste a well-known repo URL (e.g. a popular OSS project the judges recognize).
+    Watch 6 ADRs stream in. Open "Use X database" and read the rationale aloud —
+    "it inferred this from the ORM config and these three dependencies." The
+    grounding is the wow: it's not guessing, it's reading.
+
+--------------------------------------------------------------------------------
+7.2  FEATURE B — ASK YOUR CODEBASE  (CORE, highest wow factor)
+--------------------------------------------------------------------------------
+
+WHY USERS CARE
+    The ADRs answer the big decisions. But every engineer has SPECIFIC questions
+    the ADRs don't cover: "why is auth in a middleware and not a service?",
+    "what happens if this queue backs up?", "why two config files?". This is the
+    interactive payoff and the feature judges will personally want to try.
+
+WHAT IT DOES
+    A chat box scoped to the analyzed repo. The user asks a natural-language
+    question; the system answers using the repo profile + relevant retrieved
+    files, and CITES the files it used. Answers are grounded, not generic.
+
+HOW IT WORKS
+    1. On analysis, we already have the repo profile and file tree in memory.
+    2. When a question comes in, we do lightweight retrieval: rank files by
+       relevance to the question (keyword + path heuristics for MVP; embeddings
+       if time permits), fetch the top N file contents within a token budget.
+    3. Build a prompt: question + repo profile + retrieved file snippets +
+       grounding instruction ("cite the files you used; if the code doesn't
+       support an answer, say so").
+    4. Stream Gemini's answer back, render with file citations as chips.
+
+MVP IMPLEMENTATION
+    - Retrieval v1 = heuristic: match question keywords against file paths and
+      the dependency list; always include manifests and README; include any file
+      whose path or name matches a keyword.
+    - Token-budget the retrieved content (e.g. 200k tokens max for Flash; we'll
+      stay well under).
+    - Stream the response. Render citations from a structured "sources" field the
+      model returns, or parse file paths it references.
+    - Keep a short conversation history (last 3 turns) for follow-ups.
+
+ARCHITECTURE
+    Frontend → POST /api/ask {repoUrl, sha, question, history[]}
+    Backend  → retrieve relevant files → build grounded prompt → Gemini stream
+    Frontend → render streamed answer + source chips
+
+DATA
+    Input:  question, conversation history, repo identifier
+    Output: streamed text answer + sources[] (file paths)
+    Stored: ephemeral conversation history client-side; repo profile cached
+            server-side for the session.
+
+EDGE CASES
+    - Question unrelated to the repo ("what's the weather") → politely scope back.
+    - Question the code can't answer ("why did the founder pick this?") → say the
+      code doesn't contain that reasoning; offer the closest grounded inference.
+    - Retrieval misses the relevant file → fall back to repo profile + say which
+      files were considered, so the user can refine.
+
+DEMO MOMENT
+    Hand the laptop to a judge (figuratively): "ask it anything about this repo."
+    A grounded, cited answer to a real question is the moment that converts
+    skeptics. The citations prove it's reading, not bluffing.
+
+--------------------------------------------------------------------------------
+7.3  FEATURE C — ONBOARDING DOC GENERATOR  (CORE)
+--------------------------------------------------------------------------------
+
+WHY USERS CARE
+    Every team needs a "how this codebase works" doc. Almost none have a good
+    one. This is the single most universally requested internal doc and the most
+    universally neglected. One click produces it.
+
+WHAT IT DOES
+    Generates a structured onboarding guide for a new engineer:
+        - One-paragraph "what this project is"
+        - The stack at a glance
+        - How the code is organized (the folder map, explained)
+        - How to run it locally (inferred from scripts + README + Dockerfile)
+        - The key concepts/modules a new joiner must understand first
+        - The architectural decisions to be aware of (links to the ADRs)
+        - "Where to start reading" — a guided reading path through the code
+        - Gotchas / non-obvious things (inferred from config + comments)
+
+HOW IT WORKS
+    Reuses the repo profile and the generated ADRs. A single Gemini call with an
+    onboarding-doc prompt produces structured Markdown. Because the ADRs already
+    exist, the onboarding doc can reference them, creating a coherent doc set.
+
+MVP IMPLEMENTATION
+    - Generate AFTER ADRs (depends on them).
+    - Single call, Markdown output, rendered + downloadable.
+    - "Run locally" section derived from package scripts / Makefile / Dockerfile;
+      if absent, say so honestly rather than inventing commands.
+
+ARCHITECTURE
+    Frontend → POST /api/onboarding {repoUrl, sha}
+    Backend  → repo profile + ADRs → Gemini → Markdown → response
+
+DATA
+    Input:  repo identifier (reuses cached profile + ADRs)
+    Output: onboarding Markdown document
+    Stored: nothing persistent.
+
+EDGE CASES
+    - No run instructions discoverable → "No standard run configuration detected;
+      here's our best inference from the available files," clearly labeled.
+
+DEMO MOMENT
+    "And in one click, here's the doc you'd hand a new hire on day one." Scroll
+    through a genuinely useful, repo-specific onboarding guide. Judges think:
+    I would use this tomorrow.
+
+--------------------------------------------------------------------------------
+7.4  FEATURE D — PR ARCHITECTURAL REVIEW  (STRETCH)
+--------------------------------------------------------------------------------
+
+WHY USERS CARE
+    PRs silently violate architectural decisions. A reviewer who doesn't know the
+    ADR can't catch it. This makes the ADRs enforceable.
+
+WHAT IT DOES
+    Paste a PR URL (or a diff). The system checks the diff against the generated
+    ADRs and flags conflicts: "This PR adds MongoDB, but ADR-003 standardizes on
+    PostgreSQL. Intentional change, or oversight?"
+
+HOW IT WORKS
+    1. Fetch the PR diff via GitHub API.
+    2. Send diff + the ADR set to Gemini with a "find violations" prompt.
+    3. Return a list of potential conflicts, each citing the ADR and the diff
+       lines, with a severity and a suggested question for the reviewer.
+
+MVP IMPLEMENTATION (if attempted)
+    - Accept a PR URL; fetch the diff via the GitHub PR files endpoint.
+    - One Gemini call comparing diff against ADRs; return structured findings.
+    - Render as a checklist with ADR links.
+
+EDGE CASES
+    - Diff too large → summarize/sample the diff; flag that it was truncated.
+    - No ADRs generated yet → require analysis first.
+
+DEMO MOMENT
+    Only demo this if rock solid. It's a strong "and it enforces the decisions
+    too" closer, but a flaky stretch feature is worse than a tight core.
+
+--------------------------------------------------------------------------------
+7.5  FEATURE E — TECH DEBT DRIFT MAP  (STRETCH)
+--------------------------------------------------------------------------------
+
+WHY USERS CARE
+    Code drifts from its original intent. "We said microservices, but this one
+    service is now a 4000-line monolith." Naming the drift is the first step to
+    fixing it.
+
+WHAT IT DOES
+    Compares the inferred original decisions against the current state and
+    highlights where the code has diverged from its own architecture.
+
+HOW IT WORKS
+    Cross-references ADRs against current structural metrics (file sizes, module
+    boundaries, dependency sprawl) and asks Gemini to identify drift.
+
+MVP IMPLEMENTATION (if attempted)
+    - Compute simple structural metrics during ingestion (largest files, deepest
+      nesting, dependency count per module).
+    - Feed metrics + ADRs to Gemini; return a ranked drift list.
+
+DEMO MOMENT
+    A "your architecture vs your reality" view. Visually strong if you have time
+    to make a simple chart. Otherwise skip.
+
+================================================================================
+8.  END-TO-END USER FLOWS
+================================================================================
+
+8.1  Primary flow (the demo flow)
+
+    1. User lands on a single-screen app. One prominent input: "Paste a GitHub
+       repo URL." Optional expandable "Add a token for private repos / higher
+       limits."
+    2. User pastes URL, clicks "Analyze."
+    3. UI shows a live pipeline: Fetching repo → Reading structure → Identifying
+       signal files → Inferring decisions → Generating records. Each step
+       checks off as it completes. (Perceived speed.)
+    4. ADR cards stream in, one by one.
+    5. Below the ADRs: two tabs appear — "Ask the codebase" and "Onboarding doc."
+    6. User clicks "Generate onboarding doc" → doc streams in.
+    7. User opens the chat → asks a question → gets a grounded, cited answer.
+    8. User clicks "Download all" → gets a .zip or concatenated .md of ADRs +
+       onboarding doc.
+
+8.2  Error flow
+
+    Any failure (bad URL, rate limit, private repo, empty repo) resolves to a
+    friendly inline message with a clear next action — never a stack trace, never
+    a dead end.
+
+8.3  Repeat-analysis flow
+
+    Pasting a new URL resets state cleanly. (No history persistence in MVP.)
+
+================================================================================
+9.  SYSTEM ARCHITECTURE
+================================================================================
+
+9.1  High-level shape
+
+    [ Browser SPA ]  <-- HTTPS / SSE -->  [ Serverless API ]  -->  [ GitHub API ]
+            |                                      |
+            |                                      +-->  [ Gemini API ]
+            |
+       (renders ADRs, chat, docs; streams progress + answers)
+
+9.2  Components
+
+    A. Frontend SPA
+        - Single-page app. One screen.
+        - Responsibilities: input handling, pipeline progress UI, rendering ADR
+          cards / onboarding doc / chat, streaming display, downloads.
+
+    B. Backend API (serverless functions)
+        - Stateless HTTP functions. Endpoints in Section 12.
+        - Responsibilities: GitHub ingestion, repo-profile construction, prompt
+          assembly, Gemini calls (including streaming), JSON validation.
+        - Why serverless: free tier, no server to manage, scales to zero, fits
+          the hackathon and the free-stack constraint.
+
+    C. External services
+        - GitHub REST API (repo metadata, file tree, file contents, PR diffs).
+        - Gemini 2.5 Flash API (generation, chat, structured JSON).
+
+9.3  Why the backend exists at all (and isn't all client-side)
+
+    The Gemini API key must NOT ship in the browser. The backend's primary job
+    is to keep the key server-side and to do the heavier ingestion + prompt
+    assembly. This is a hard requirement, not a preference.
+
+9.4  State
+
+    MVP is effectively stateless per request. An optional in-memory/session cache
+    of the repo profile (keyed by repoUrl + commit sha) avoids re-fetching GitHub
+    for chat and onboarding calls within a session. No database required for the
+    hackathon. (A KV store is a post-hackathon nicety, not a need.)
+
+9.5  Data flow for one analysis
+
+    1. POST /api/analyze {repoUrl}
+    2. Backend: parse owner/repo from URL
+    3. Backend: GET repo metadata, default branch, latest sha
+    4. Backend: GET recursive tree
+    5. Backend: select signal files; GET their contents (batched, budgeted)
+    6. Backend: assemble repo profile (structured object)
+    7. Backend: call Gemini with ADR prompt (JSON mode)
+    8. Backend: validate JSON against ADR schema
+    9. Backend: return {profile (lite), adrs[], sha}
+    10. Frontend: render; cache sha for subsequent /ask and /onboarding calls
+
+================================================================================
+10.  TECHNOLOGY STACK AND JUSTIFICATION
+================================================================================
+
+Every choice here optimizes for: free, fast to build with Claude Code, reliable
+in a live demo. Each line is itself a small ADR.
+
+    LLM:                Gemini 2.5 Flash
+        Why: generous free tier, fast, 1M-token context window (lets us feed
+        large repo profiles without aggressive chunking), native JSON mode for
+        structured ADR output. The product is model-agnostic; Flash is the
+        free-tier choice.
+
+    Frontend framework: React (Vite) + Tailwind
+        Why: fastest path to a clean SPA with Claude Code; Tailwind keeps styling
+        velocity high; streaming UI is straightforward with fetch + ReadableStream
+        or EventSource.
+
+    Backend:            Node.js serverless functions
+        Why: same language as frontend (one mental context), trivial GitHub +
+        Gemini SDK usage, first-class on every free host. Could equally be Python;
+        Node chosen for single-language simplicity.
+
+    Hosting:            Vercel or Azure Static Web Apps (free tier)
+        Why: both give static frontend + serverless functions on one free deploy,
+        instant public URL, auto HTTPS. For "Microsoft Build" optics, Azure
+        Static Web Apps is the on-theme choice and is genuinely free for this
+        scale; Vercel is the fallback if Azure setup eats time. Pick ONE on day 1
+        and don't relitigate.
+
+    Repo data:          GitHub REST API
+        Why: free, well-documented, no SDK required (plain fetch). Unauthenticated
+        = 60 req/hr (fine for a demo with a couple of repos); a user-supplied PAT
+        raises it to 5000/hr and unlocks private repos.
+
+    Markdown rendering: react-markdown
+        Why: render ADRs and onboarding docs as rich Markdown in-app; same content
+        is the downloadable artifact.
+
+    Optional retrieval: in-memory keyword ranking (MVP) → embeddings (stretch)
+        Why: keyword/path heuristics need zero infra and are good enough for the
+        demo. Embeddings (via a free embedding model) are a clean upgrade if time
+        allows.
+
+    NO database, NO auth provider, NO paid service for the MVP. This is a
+    deliberate constraint that keeps the build inside 5 days and inside $0.
+
+================================================================================
+11.  DATA MODELS AND SCHEMAS
+================================================================================
+
+These are the canonical shapes passed between layers. Define them once; Claude
+Code should generate types from these.
+
+11.1  RepoProfile (built during ingestion, the heart of grounding)
+
+    RepoProfile {
+      owner:          string
+      repo:           string
+      defaultBranch:  string
+      sha:            string            // commit analyzed, for cache + citation
+      description:    string | null     // from GitHub repo metadata
+      primaryLanguage:string | null
+      languages:      { [lang: string]: number }   // bytes per language
+      fileTree:       FileNode[]        // path + type + size, NOT contents
+      manifests:      ManifestFile[]    // parsed dependency manifests
+      signalFiles:    SignalFile[]      // path + truncated contents
+      readme:         string | null
+      structureSummary: {
+        topLevelDirs: string[]
+        serviceCount: number            // heuristic for monolith vs services
+        hasDocker:    boolean
+        hasCI:        boolean
+        testDirs:     string[]
+        largestFiles: { path: string, size: number }[]  // for drift (stretch)
+      }
+      stats: {
+        totalFiles:   number
+        totalSizeKB:  number
+        truncated:    boolean           // did we hit the token budget?
+      }
+    }
+
+    FileNode {
+      path: string
+      type: "file" | "dir"
+      size: number        // bytes, 0 for dirs
+    }
+
+    ManifestFile {
+      path: string                      // e.g. "package.json"
+      ecosystem: string                 // "npm" | "pip" | "go" | "maven" | ...
+      dependencies: string[]            // direct deps only for MVP
+    }
+
+    SignalFile {
+      path: string
+      content: string                   // truncated to a per-file char cap
+      truncated: boolean
+    }
+
+11.2  ADR (the core output object)
+
+    ADR {
+      id:          string               // "ADR-001"
+      title:       string               // "Use PostgreSQL as the primary datastore"
+      status:      "inferred"
+      confidence:  "high" | "medium" | "low"
+      context:     string               // the situation forcing the decision
+      decision:    string               // what was chosen
+      rationale:   string               // why — grounded
+      alternatives:{ option: string, whyRejected: string }[]
+      consequences:string[]             // tradeoffs accepted
+      evidence:    Evidence[]           // what this inference is based on
+      category:    string               // "datastore" | "framework" | ...
+    }
+
+    Evidence {
+      type: "dependency" | "file" | "config" | "structure" | "readme"
+      ref:  string                      // e.g. "package.json: pg@^8", or a path
+      note: string                      // why this is evidence
+    }
+
+11.3  AskRequest / AskResponse
+
+    AskRequest {
+      repoUrl: string
+      sha:     string
+      question:string
+      history: { role: "user" | "assistant", content: string }[]   // last 3
+    }
+
+    AskResponse (streamed) {
+      // streamed text tokens, then a final metadata frame:
+      sources: { path: string, reason: string }[]
+    }
+
+11.4  OnboardingDoc
+
+    OnboardingDoc {
+      markdown: string                  // the full document
+      sections: string[]                // section titles, for a TOC
+    }
+
+11.5  PRReview (stretch)
+
+    PRReview {
+      prUrl: string
+      findings: {
+        adrId: string
+        severity: "info" | "warning" | "conflict"
+        summary: string
+        diffRefs: string[]              // file paths / hunks involved
+        reviewerQuestion: string
+      }[]
+      truncated: boolean
+    }
+
+================================================================================
+12.  API DESIGN — EVERY ENDPOINT
+================================================================================
+
+All endpoints are serverless functions. JSON in, JSON or SSE out. The Gemini key
+lives only here.
+
+12.1  POST /api/analyze
+    Purpose: full ingestion + ADR generation.
+    Body:    { repoUrl: string, pat?: string }
+    Returns: { profileLite: {...}, adrs: ADR[], sha: string }
+             (profileLite = profile minus heavy file contents, for client reuse)
+    Streaming: optional SSE that emits pipeline-stage events
+               ("stage": "fetching" | "structure" | "signals" | "inferring"
+                | "done") then the final payload. Recommended for the demo's
+               live-pipeline feel.
+    Errors:  400 bad URL; 404 repo not found; 403 rate limited / private;
+             422 insufficient signal (still returns a helpful ADR).
+
+12.2  POST /api/ask
+    Purpose: grounded Q&A over the analyzed repo.
+    Body:    AskRequest
+    Returns: SSE stream of answer tokens, terminated by a sources frame.
+    Errors:  409 if repo not yet analyzed this session (client should re-analyze).
+
+12.3  POST /api/onboarding
+    Purpose: generate the onboarding doc.
+    Body:    { repoUrl: string, sha: string }
+    Returns: SSE stream of Markdown, or { markdown, sections } if non-streamed.
+
+12.4  POST /api/pr-review   (stretch)
+    Purpose: check a PR diff against ADRs.
+    Body:    { prUrl: string, adrs: ADR[] }   // client passes back the ADRs
+    Returns: PRReview
+
+12.5  GET /api/health
+    Purpose: trivial uptime check for demo-day confidence.
+    Returns: { ok: true, time }
+
+12.6  Internal contract notes
+    - The server caches RepoProfile in memory keyed by `${owner}/${repo}@${sha}`
+      so /ask and /onboarding don't refetch GitHub. Cache is best-effort; on a
+      cold function it rebuilds from GitHub (acceptable).
+    - PAT, if provided, is used per-request and never logged or cached to disk.
+
+================================================================================
+13.  THE REPO INGESTION PIPELINE (HOW WE READ GITHUB)
+================================================================================
+
+This is the part that makes grounding possible. Get this right and everything
+downstream is easy.
+
+13.1  Parse the URL
+    Accept forms:
+        https://github.com/owner/repo
+        https://github.com/owner/repo.git
+        github.com/owner/repo
+        owner/repo
+    Extract {owner, repo}. Reject anything else with a clear message.
+
+13.2  Fetch repo metadata
+    GET /repos/{owner}/{repo}
+        -> default_branch, description, language, size, visibility
+    If 404: repo not found or private (prompt for PAT).
+
+13.3  Fetch the file tree (one call, recursive)
+    GET /repos/{owner}/{repo}/git/trees/{default_branch}?recursive=1
+        -> full list of paths + types + sizes
+    This single call gives us the entire structure WITHOUT downloading files.
+    If the tree is truncated by GitHub (very large repos), set
+    profile.stats.truncated = true and proceed with what we have.
+
+13.4  Select signal files (the key heuristic)
+    From the tree, select, in priority order, up to a budget:
+        TIER 1 (always): dependency manifests at any depth —
+            package.json, requirements.txt, pyproject.toml, go.mod, pom.xml,
+            build.gradle, Cargo.toml, Gemfile, composer.json
+        TIER 2 (always): infra/config —
+            Dockerfile, docker-compose.yml, *.tf, .github/workflows/*.yml,
+            vercel.json, serverless.yml, nginx.conf, Procfile
+        TIER 3 (always): README.md (root), and any /docs/architecture* or
+            existing /docs/adr/* files (huge signal if they exist)
+        TIER 4 (sampled): entry points + representative source —
+            main.*, index.*, app.*, server.*, schema.*, models/*, routes/*,
+            and one or two files from the largest top-level source dirs
+    Stop selecting when the running token estimate hits the budget.
+
+13.5  Fetch contents of selected files
+    For each selected file:
+        GET /repos/{owner}/{repo}/contents/{path}?ref={sha}
+        -> base64 content; decode; truncate to a per-file char cap (e.g. 8k chars)
+    Batch with limited concurrency to respect rate limits.
+
+13.6  Parse manifests
+    For each manifest, extract direct dependencies into ManifestFile. This is the
+    single richest decision signal: deps reveal datastore, framework, auth,
+    caching, testing, API style. Parse precisely (don't just regex blindly).
+
+13.7  Compute structureSummary
+    From the tree:
+        topLevelDirs, serviceCount (count of dirs containing their own manifest =
+        microservices signal), hasDocker, hasCI, testDirs, largestFiles.
+
+13.8  Assemble RepoProfile and budget-check
+    Build the RepoProfile object. If total estimated tokens exceed the model
+    budget, drop TIER 4 files first, then truncate TIER 3, and set truncated=true.
+
+13.9  Rate-limit handling
+    - Read X-RateLimit-Remaining headers.
+    - If unauthenticated and near the 60/hr limit, surface a message recommending
+      a PAT, and degrade gracefully (analyze with fewer file fetches).
+    - With a PAT, 5000/hr — effectively unlimited for a demo.
+
+================================================================================
+14.  THE LLM LAYER — PROMPTS, CHUNKING, GROUNDING
+================================================================================
+
+14.1  Principles
+    - Always pass the RepoProfile as structured context, not raw concatenated
+      files. Structure improves inference quality and token efficiency.
+    - Demand JSON output via the model's structured-output / JSON mode for ADRs
+      and PR review. Free text only for chat and onboarding (Markdown).
+    - Every prompt includes the grounding instruction: cite evidence, label
+      confidence, never invent reasoning the code doesn't support.
+
+14.2  ADR generation prompt (Feature A) — specification
+
+    System role:
+        "You are a senior software architect performing an architectural
+         autopsy. You read a repository profile and infer the architectural
+         decisions that produced it. You are rigorous: every decision you state
+         must be grounded in specific evidence from the profile. You explicitly
+         label confidence. You never fabricate reasoning the evidence doesn't
+         support. When evidence is weak, you say so and lower confidence."
+
+    User content:
+        - The full RepoProfile (JSON).
+        - Instruction: "Identify the 5-8 most significant architectural decisions
+          encoded in this repository. For each, produce an ADR object matching
+          this schema [ADR schema]. Prioritize decisions in this order:
+          datastore, backend framework/language, frontend framework, architecture
+          style, auth, API style, caching/state, testing, CI/CD, structural
+          patterns. For ALTERNATIVES, name the realistic options the team likely
+          weighed and why each was probably rejected, grounded in the stack you
+          observe. For EVIDENCE, point to specific dependencies, files, configs,
+          or structural facts from the profile. Return ONLY a JSON array of ADR
+          objects."
+
+    Output: JSON array validated against the ADR schema. On validation failure,
+            one repair retry with the validation errors appended.
+
+14.3  Ask Your Codebase prompt (Feature B) — specification
+
+    System role:
+        "You answer questions about a specific codebase. You ground every answer
+         in the provided repository profile and file excerpts. You cite the files
+         you used. If the provided context doesn't contain the answer, you say so
+         plainly and offer the closest grounded inference, clearly labeled as
+         inference. You never invent file contents or behavior."
+
+    User content:
+        - RepoProfile (lite) + retrieved file excerpts + the question + short
+          history.
+        - Instruction: "Answer the question using only the provided context.
+          After your answer, list the file paths you relied on as 'sources'."
+
+    Output: streamed Markdown answer + a trailing sources list.
+
+14.4  Onboarding doc prompt (Feature C) — specification
+
+    System role:
+        "You write the onboarding guide a new engineer needs on day one. You are
+         concrete and repo-specific, never generic. You ground run instructions in
+         the actual scripts/config; if they're absent, you say so rather than
+         inventing commands."
+
+    User content:
+        - RepoProfile + the generated ADRs.
+        - Instruction with the exact section list from Feature C (Section 7.3).
+        - "Output well-structured Markdown. Reference the ADRs by id where
+          relevant."
+
+    Output: Markdown.
+
+14.5  PR review prompt (Feature D, stretch) — specification
+
+    System role:
+        "You review a pull request diff against a set of architectural decision
+         records. You flag where the diff may violate or contradict an ADR. You
+         are precise and cite both the ADR and the diff location. You distinguish
+         intentional architecture changes from likely oversights, and phrase each
+         finding as a question for the human reviewer."
+
+    Output: PRReview JSON.
+
+14.6  Token budgeting
+    - Flash gives a very large context window; we still budget defensively:
+      target < 250k tokens of input for analyze, far less for ask.
+    - The RepoProfile is the compression layer: tree + parsed deps + truncated
+      signal files is dramatically smaller than the whole repo, yet carries the
+      decision signal.
+
+14.7  Determinism and reliability
+    - Low temperature for ADR/PR (structured, factual).
+    - Slightly higher for onboarding prose (readability), still grounded.
+    - Always validate JSON; always have a single repair retry; never crash the UI
+      on a malformed model response — degrade to a readable error card.
+
+================================================================================
+15.  FRONTEND SPECIFICATION
+================================================================================
+
+15.1  Layout (single screen, progressive disclosure)
+
+    HEADER
+        - Product name "ArchDecision" + one-line tagline.
+    INPUT ZONE (centered, prominent before first analysis)
+        - Large text input: "Paste a GitHub repo URL"
+        - "Analyze" button
+        - Collapsible: "Private repo or hitting limits? Add a token" → PAT field
+          (masked, with a one-line note that it's used only for this request and
+          never stored)
+    PIPELINE PROGRESS (appears on analyze)
+        - A horizontal or vertical stepper showing the 5 stages checking off:
+          Fetching repo → Reading structure → Identifying signal files →
+          Inferring decisions → Generating records.
+        - This is load-bearing for perceived speed. Never a bare spinner.
+    RESULTS ZONE (appears as data streams)
+        - ADR cards: collapsible. Header shows id, title, a confidence badge
+          (color-coded: high/medium/low). Expanded shows context, decision,
+          rationale, alternatives, consequences, and an "Evidence" subsection
+          listing the grounding refs.
+        - Tabs or sections below the ADRs: "Ask the codebase" and
+          "Onboarding doc."
+    ASK PANEL
+        - Chat UI: message list + input. Assistant messages render Markdown and
+          show source chips (clickable file paths → open the file on GitHub).
+    ONBOARDING PANEL
+        - "Generate onboarding doc" button → streamed Markdown render.
+    EXPORT
+        - "Download all" → concatenated Markdown (ADRs + onboarding) or a .zip.
+        - Per-ADR "Copy as Markdown" for easy PR-ing into /docs/adr/.
+
+15.2  Streaming behavior
+    - analyze: show stage events live; render ADR cards as they arrive (or all at
+      once if non-streamed — but stage progress must still animate).
+    - ask + onboarding: token-stream into the UI.
+
+15.3  Visual design direction
+    - Clean, technical, confident. Monospace accents for code/paths, sans for
+      prose. Confidence badges are the one place to use color meaningfully
+      (high=green, medium=amber, low=gray). Avoid clutter; the content is the
+      hero. Dark mode friendly.
+
+15.4  States to design explicitly
+    - Empty (pre-analysis), loading (pipeline), success (results), partial
+      (truncated repo — show a banner), error (friendly inline), rate-limited
+      (PAT suggestion).
+
+15.5  Accessibility + polish for demo
+    - Keyboard: Enter submits the URL.
+    - Sensible loading copy. No layout shift jank when cards stream in.
+    - A pre-filled example URL or a "Try an example" button so a cold judge sees
+      value in one click without typing.
+
+================================================================================
+16.  NON-FUNCTIONAL REQUIREMENTS
+================================================================================
+
+    PERFORMANCE
+        - Time-to-first-ADR: target < 20s; full analysis < 60s on a medium repo.
+        - Chat answer first token: < 5s.
+        - Mitigation for slowness: stage progress UI + streaming so the wait is
+          never dead air.
+
+    LIMITS (free-tier reality)
+        - GitHub: 60 req/hr unauth, 5000 with PAT. Keep file fetches modest
+          (≤ ~20 files) so an unauth demo stays under the limit across a few runs.
+        - Gemini Flash free tier: generous RPM/RPD; one analyze = a handful of
+          calls. Stay within by not over-calling.
+
+    COST
+        - $0. Every component is free tier by design. This is a hard requirement.
+
+    RELIABILITY
+        - The demo must not depend on a single fragile call. Cache the repo
+          profile; allow re-running a single failed stage; degrade gracefully.
+
+    PORTABILITY
+        - Model-agnostic LLM layer behind a thin interface so Gemini can be
+          swapped without touching features.
+
+================================================================================
+17.  SECURITY, PRIVACY, AND RATE LIMITS
+================================================================================
+
+    - API KEYS: Gemini key lives only in serverless env vars. Never in the
+      client bundle. Verify the built frontend contains no key.
+    - PAT HANDLING: user-supplied GitHub PAT is used per-request, passed to the
+      backend over HTTPS, used for GitHub calls, and never logged, never cached
+      to disk, never returned to the client. State this in the UI to build trust.
+    - PUBLIC DATA: MVP analyzes public repos; no private data handling beyond the
+      optional PAT path.
+    - NO PII: we don't collect user accounts or personal data in the MVP.
+    - INJECTION AWARENESS: repo contents (README, comments) are untrusted input.
+      The LLM prompts treat repo text as DATA to analyze, not instructions to
+      follow. The system prompt explicitly frames repo content as the subject of
+      analysis, reducing prompt-injection surface from malicious READMEs.
+    - RATE-LIMIT UX: detect GitHub 403/limit responses; surface the PAT path;
+      never hard-fail silently.
+
+================================================================================
+18.  ERROR HANDLING AND EDGE CASES
+================================================================================
+
+    INPUT
+        - Malformed URL → inline "That doesn't look like a GitHub repo URL."
+        - Non-existent repo → "Repo not found (or private — add a token)."
+        - Private repo, no PAT → PAT prompt with a link to GitHub's PAT docs.
+
+    REPO SHAPE
+        - Empty repo → one honest ADR: "Not enough code to infer decisions yet."
+        - Monorepo → detect (multiple manifests in subdirs); banner + analyze
+          top level; offer subdir focus (stretch).
+        - Giant repo / truncated tree → analyze available signal; "truncated"
+          banner; lower confidence where appropriate.
+        - Unknown stack (no recognized manifest) → infer from extensions; lower
+          confidence; say what we could and couldn't determine.
+
+    SERVICES
+        - GitHub rate limit → PAT suggestion + degrade.
+        - GitHub 5xx → retry once, then friendly error.
+        - Gemini malformed JSON → one schema-repair retry → else error card.
+        - Gemini timeout/slow → keep streaming UI alive; allow stage retry.
+
+    CHAT
+        - Off-topic question → scope back politely.
+        - Unanswerable-from-code question → say so; offer grounded inference.
+        - Retrieval miss → state which files were considered; invite refinement.
+
+    GENERAL
+        - No raw stack traces ever reach the user. Every failure has a friendly
+          message and a next action.
+
+================================================================================
+19.  THE 5-DAY BUILD PLAN (HOUR BY HOUR)
+================================================================================
+
+Assumes ~8 focused hours/day with Claude Code. Front-load the risky, unfamiliar
+parts (GitHub ingestion, streaming) and protect demo day.
+
+DAY 1 — Foundations + ingestion (the riskiest part)
+    - Decide host (Azure Static Web Apps OR Vercel) and scaffold: React+Vite+
+      Tailwind frontend, serverless functions backend. Deploy a "hello" to get a
+      live URL on day 1 (de-risk deployment early).
+    - Implement URL parsing + GitHub metadata + recursive tree fetch.
+    - Implement signal-file selection + content fetch + manifest parsing.
+    - Build RepoProfile assembler. Log it; eyeball it on 3 test repos
+      (small/clean, large/messy, non-JS).
+    - Exit criteria: hitting /api/analyze returns a correct RepoProfile JSON.
+
+DAY 2 — Feature A (ADR generation) end to end
+    - Wire Gemini (key in env), JSON mode, ADR prompt, schema validation +
+      repair retry.
+    - Frontend: input zone, pipeline stepper, ADR cards with confidence badges
+      and evidence section.
+    - Streaming stage events for the live-pipeline feel.
+    - Exit criteria: paste URL → ADR cards render, grounded, on the 3 test repos.
+
+DAY 3 — Feature B (Ask) + Feature C (Onboarding)
+    - Implement heuristic retrieval + /api/ask streaming + chat UI + source chips.
+    - Implement /api/onboarding (reusing profile + ADRs) + streamed Markdown view.
+    - Exit criteria: ask a real question, get a grounded cited answer; generate a
+      useful onboarding doc.
+
+DAY 4 — Hardening + export + polish
+    - All edge cases from Section 18. Friendly errors everywhere.
+    - Export: download-all Markdown + per-ADR copy.
+    - "Try an example" button. Empty/loading/error/partial states.
+    - Visual polish pass. Dark mode. No layout shift.
+    - Optional: start ONE stretch feature (D or E) only if everything above is
+      solid.
+    - Exit criteria: a stranger can use it without you explaining anything.
+
+DAY 5 — Demo prep + buffer (do NOT build new features today)
+    - Pick the 1-2 demo repos; rehearse the 4-minute script (Section 20) until
+      it's muscle memory.
+    - Pre-warm: run the demo repos once so anything cacheable is cached.
+    - Record a 60-second backup video in case live wifi/API fails on stage.
+    - Prepare answers to the obvious judge questions (competition, moat, accuracy,
+      what's real vs inferred).
+    - Final deploy freeze. Health check green. Buffer for the inevitable surprise.
+
+================================================================================
+20.  THE DEMO SCRIPT (WHAT JUDGES SEE)
+================================================================================
+
+Target: 4 minutes. Every second earns its place. Structure: hook → live magic →
+interactive proof → close.
+
+    [0:00–0:30] THE HOOK (make them feel the pain)
+        "Every engineer has joined a codebase and asked 'why is it built like
+         this?' — and gotten a shrug, because the person who knew left. That
+         lost context costs every team weeks. ArchDecision recovers it."
+
+    [0:30–2:00] LIVE MAGIC (Feature A)
+        - Paste a repo the judges recognize. Click Analyze.
+        - Narrate the pipeline as stages check off ("it's reading the structure,
+          now the dependencies...").
+        - ADRs stream in. Open one. Read the rationale, then point at the
+          Evidence section: "It's not guessing — it inferred this from these
+          three dependencies and this config file." (Grounding = credibility.)
+
+    [2:00–3:00] INTERACTIVE PROOF (Feature B)
+        - "But the big decisions aren't everything." Open Ask Your Codebase.
+        - Type a real, specific question. Show the grounded, CITED answer.
+        - Ideally invite a judge to suggest the question — nothing converts like
+          watching it answer their question about a repo they know.
+
+    [3:00–3:30] THE TEAM ARTIFACT (Feature C)
+        - One click → onboarding doc. Scroll it. "This is the day-one doc every
+          team needs and never writes. Generated in seconds, downloadable,
+          PR-able into your repo as /docs/adr."
+
+    [3:30–4:00] THE CLOSE
+        - "Zero setup, works on any repo, recovers the reasoning your codebase
+          was about to lose. ArchDecision — institutional memory your codebase
+          never had."
+        - If asked "is this real?": yes — paste your own repo right now.
+
+    DEMO RULES
+        - Always have the backup video ready.
+        - Pre-test the exact demo repos on the exact deployed URL on demo wifi if
+          possible.
+        - Never demo a stretch feature unless it's flawless.
+
+================================================================================
+21.  TESTING AND ACCEPTANCE CRITERIA
+================================================================================
+
+21.1  Acceptance criteria per feature
+
+    Feature A (ADR) is DONE when:
+        - Any public repo URL yields 5-8 ADRs in < 60s.
+        - Every ADR has non-empty context, decision, rationale, ≥1 evidence ref.
+        - Confidence badges render and vary appropriately by signal strength.
+        - Output downloads as valid Markdown.
+        - Works on all 3 canonical test repos.
+
+    Feature B (Ask) is DONE when:
+        - A specific question returns a grounded answer with ≥1 source citation.
+        - Off-topic and unanswerable questions are handled gracefully.
+        - Answer streams (first token < 5s).
+
+    Feature C (Onboarding) is DONE when:
+        - One click yields a repo-specific, sectioned, useful Markdown doc.
+        - Run instructions are grounded or honestly marked absent.
+
+21.2  Canonical test repos (pick concrete ones on day 1)
+    - Small/clean: a tidy single-language project.
+    - Large/messy: a big multi-folder project.
+    - Non-JS: a Python or Go project, to prove language-agnosticism.
+
+21.3  Failure-mode tests
+    - Bad URL, 404 repo, private-no-PAT, empty repo, rate-limit, malformed model
+      JSON. Each must produce a friendly state, not a crash.
+
+21.4  Demo-day smoke test (run morning of)
+    - /api/health green; analyze each demo repo once; ask one question; generate
+      one onboarding doc; download once. All green = cleared to present.
+
+================================================================================
+22.  DEPLOYMENT
+================================================================================
+
+    - Single repo, single deploy: static frontend + serverless functions on the
+      chosen free host.
+    - Environment variables: GEMINI_API_KEY (server only). No client-exposed keys.
+    - CI: host's built-in git deploy (push to main → deploy). No custom pipeline
+      needed.
+    - Custom domain optional; the host's free URL is fine for judging.
+    - Freeze deploys on day 5 except for emergency fixes.
+
+================================================================================
+23.  POST-HACKATHON ROADMAP
+================================================================================
+
+    PHASE 1 — From demo to tool
+        - GitHub OAuth for private repos + higher limits without manual PATs.
+        - Persist analyses (KV/DB) so a repo's ADRs are saved and re-openable.
+        - "Commit ADRs as a PR" — write /docs/adr/*.md back to the repo.
+
+    PHASE 2 — From tool to workflow
+        - GitHub App + PR review bot (Feature D) running on every PR.
+        - Webhook-driven re-analysis on merge to keep ADRs current.
+        - Human-in-the-loop: let teams CORRECT inferred ADRs; corrections become
+          ground truth.
+
+    PHASE 3 — The defensible asset
+        - Accumulated, human-corrected decision history per repo/org becomes the
+          moat: a living architectural memory that improves with use and that no
+          generic code-chat tool possesses.
+        - Drift detection (Feature E) as a continuous signal, not a one-off.
+
+    PHASE 4 — Org intelligence
+        - Cross-repo architectural consistency for an org ("three teams chose
+          three different queues — here's the divergence").
+
+    BUSINESS MODEL (when asked by judges)
+        - Free for public/OSS repos (distribution + goodwill).
+        - Paid per-seat or per-repo for private repos and the PR bot, the way
+          every developer tool with proven SaaS multiples prices.
+
+================================================================================
+24.  RISKS AND MITIGATIONS
+================================================================================
+
+    RISK: Inferred ADRs are sometimes wrong.
+        MITIGATION: confidence labels + evidence grounding make output auditable,
+        not authoritative. We frame it as a draft a human confirms, which is
+        exactly how ADRs should be written anyway.
+
+    RISK: Live demo API/wifi failure.
+        MITIGATION: pre-warmed cache + recorded backup video + health check.
+
+    RISK: GitHub rate limits during judging.
+        MITIGATION: keep file fetches modest; have a PAT ready; pre-run demo repos.
+
+    RISK: An incumbent code-chat tool ships a similar feature.
+        MITIGATION (narrative): we are artifact-first and decision-first; the moat
+        is corrected, accumulated decision history, not the generation step.
+
+    RISK: Scope creep eats the core.
+        MITIGATION: stretch features are explicitly gated behind a solid core; day
+        5 is frozen for demo prep, not building.
+
+    RISK: Model output unreliable / malformed.
+        MITIGATION: JSON mode + schema validation + one repair retry + graceful
+        degradation to a readable error, never a crash.
+
+================================================================================
+25.  APPENDIX
+================================================================================
+
+25.1  Glossary
+    ADR — Architecture Decision Record. A short document capturing one decision,
+          its context, the choice made, and its consequences.
+    Repo profile — our structured, compressed representation of a repository
+          (tree + parsed manifests + truncated signal files) used as LLM context.
+    Signal file — a file that strongly indicates architectural decisions
+          (manifests, Dockerfiles, CI configs, entry points).
+    Grounding — tying every generated claim to specific evidence in the repo.
+    PAT — GitHub Personal Access Token; raises rate limits and unlocks private
+          repos.
+
+25.2  Signal-file priority cheat sheet (for the ingestion code)
+    Always:   package.json, requirements.txt, pyproject.toml, go.mod, pom.xml,
+              build.gradle, Cargo.toml, Gemfile, composer.json,
+              Dockerfile, docker-compose.yml, .github/workflows/*,
+              README.md, /docs/adr/*, /docs/architecture*
+    Sample:   main.*, index.*, app.*, server.*, schema.*, models/*, routes/*
+
+25.3  Confidence rubric (for the ADR prompt)
+    HIGH    — decision is directly evidenced by a dependency/config (e.g. `pg`
+              dependency + ORM config → PostgreSQL).
+    MEDIUM  — decision is strongly implied by structure or a combination of
+              weaker signals.
+    LOW     — decision is plausible but inferred from indirect cues; flagged for
+              human confirmation.
+
+25.4  Sample ADR (shape illustration, content is illustrative)
+    ADR-003: Use PostgreSQL as the primary datastore
+    Status: Inferred — Confidence: High
+    Context: The application needs persistent, relational storage with
+        transactional guarantees for its core entities.
+    Decision: PostgreSQL was adopted as the primary relational datastore.
+    Rationale: The dependency manifest includes a PostgreSQL driver and an ORM
+        configured with a Postgres dialect; migration files use Postgres-specific
+        types.
+    Alternatives:
+        - MySQL — rejected; no MySQL driver present and config is Postgres-
+          dialect specific.
+        - A document store (MongoDB) — rejected; the data model is relational
+          with foreign-key migrations, not document-shaped.
+    Consequences: Strong relational integrity and transactions; requires managing
+        a relational schema and migrations; horizontal scaling needs more effort
+        than a managed document store.
+    Evidence:
+        - dependency: "pg" in package.json
+        - config: ORM dialect set to "postgres"
+        - structure: /migrations/*.sql using Postgres types
+
+25.5  The one-line build mantra
+    "Paste a repo → grounded decision records, a codebase you can question, and a
+     day-one onboarding doc — in 60 seconds, for free, on any repo."
+
+================================================================================
+END OF DOCUMENT
+================================================================================
