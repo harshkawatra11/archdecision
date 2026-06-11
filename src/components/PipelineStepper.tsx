@@ -33,7 +33,7 @@ export default function PipelineStepper({ stage, detail }: { stage: PipelineStag
                   isDone
                     ? 'border-emerald-400/40 bg-emerald-400/10 text-emerald-300'
                     : isActive
-                      ? 'border-accent/50 bg-accent/10 text-accent-soft'
+                      ? 'border-white/30 bg-white/[0.06] text-slate-200'
                       : 'border-white/10 text-slate-600'
                 }`}
               >

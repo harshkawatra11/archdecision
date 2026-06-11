@@ -22,11 +22,11 @@ export default function Header() {
   return (
     <header ref={ref} className="flex items-center justify-between py-3.5">
       <div data-anim className="flex items-center gap-3">
-        <div className="grid h-8 w-8 place-items-center rounded-lg bg-accent/10 ring-1 ring-accent/30">
-          <GitBranch className="h-4 w-4 text-accent-soft" strokeWidth={2.2} />
+        <div className="grid h-8 w-8 place-items-center rounded-lg bg-white/[0.05] ring-1 ring-white/10">
+          <GitBranch className="h-4 w-4 text-slate-300" strokeWidth={2.2} />
         </div>
         <div className="flex items-baseline gap-3">
-          <h1 className="text-[15px] font-semibold tracking-tight text-slate-100">ArchDecision</h1>
+          <h1 className="font-display text-[15px] font-semibold tracking-tight text-slate-100">ArchDecision</h1>
           <p className="hidden text-xs text-slate-500 sm:block">Why your codebase is the way it is</p>
         </div>
       </div>

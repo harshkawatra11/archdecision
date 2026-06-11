@@ -57,7 +57,7 @@ export default function OnboardingPanel({ profile, adrs, pat, doc, setDoc }: Pro
         <button
           onClick={generate}
           disabled={busy}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-slate-300 transition hover:border-accent/40 disabled:opacity-40"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-slate-300 transition hover:border-white/25 disabled:opacity-40"
         >
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
           Regenerate
@@ -65,7 +65,7 @@ export default function OnboardingPanel({ profile, adrs, pat, doc, setDoc }: Pro
         <button
           onClick={() => downloadText(`ONBOARDING-${profile.repo}.md`, doc)}
           disabled={!doc || busy}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-slate-300 transition hover:border-accent/40 disabled:opacity-40"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-slate-300 transition hover:border-white/25 disabled:opacity-40"
         >
           <Download className="h-3.5 w-3.5" />
           Download .md

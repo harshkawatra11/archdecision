@@ -25,36 +25,30 @@ export default function InputZone({ onAnalyze, busy }: Props) {
       transition={{ duration: 0.6, ease: 'easeOut' }}
       className="relative mx-auto w-full max-w-2xl text-center"
     >
-      {/* Soft glow behind the hero */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-24 left-1/2 h-72 w-[36rem] -translate-x-1/2 rounded-full bg-accent/[0.07] blur-3xl"
-      />
 
       <div className="relative">
-        <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[11px] font-medium tracking-wide text-slate-400">
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">
           <span className="relative flex h-1.5 w-1.5">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
           </span>
-          Evidence-grounded · Zero hallucinations
+          Context on arrival
         </div>
 
-        <h2 className="text-balance text-4xl font-semibold leading-[1.08] tracking-tight text-slate-100 sm:text-[3.4rem]">
-          Reverse-engineer the{' '}
-          <span className="bg-gradient-to-r from-accent-soft via-accent to-accent-soft bg-clip-text text-transparent">
-            architecture
-          </span>{' '}
-          behind any codebase
-        </h2>
-        <p className="mx-auto mt-5 max-w-xl text-pretty text-[15px] leading-relaxed text-slate-400">
-          Point at a GitHub repo. In ~60 seconds, get grounded Architecture Decision Records,
-          plain-English answers about the code, and a ready-to-commit onboarding doc.
+        <h1 className="font-display font-semibold tracking-[-0.03em] text-slate-100">
+          <span className="block whitespace-nowrap text-[1.95rem] leading-[1.15] sm:text-[2.9rem]">New Repository. No Context.</span>
+          <span className="block pb-1 text-[2.3rem] leading-[1.2] text-emerald-400 sm:text-[3.5rem]">
+            Not Anymore.
+          </span>
+        </h1>
+        <p className="mx-auto mt-6 max-w-md text-pretty text-[15px] leading-[1.65] text-slate-400">
+          ArchDecision reconstructs the architectural decisions inside any codebase, so your first
+          day is spent contributing, not guessing how it all fits together.
         </p>
 
         <div className="mt-10">
           {/* Command box */}
-          <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-ink-900/90 p-2 pl-4 shadow-card transition focus-within:border-accent/40 focus-within:shadow-glow">
+          <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-ink-900/90 p-2 pl-4 shadow-card transition focus-within:border-white/25">
             <span className="select-none font-mono text-sm text-slate-600">github.com/</span>
             <input
               value={url}
@@ -90,7 +84,7 @@ export default function InputZone({ onAnalyze, busy }: Props) {
                   setUrl(r.url);
                   onAnalyze(r.url, pat.trim());
                 }}
-                className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 font-mono text-slate-400 transition hover:border-accent/40 hover:bg-accent/[0.06] hover:text-accent-soft disabled:opacity-40"
+                className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 font-mono text-slate-400 transition hover:border-white/20 hover:bg-white/[0.05] hover:text-slate-200 disabled:opacity-40"
               >
                 {r.label}
               </button>

@@ -15,6 +15,20 @@ body,
 /* GitHub-dark feel: flat near-black canvas, no gradients, crisp 1px borders. */
 body {
   @apply bg-ink-900 text-slate-200 antialiased;
+  /* Inter: contextual alternates + slashed zero + proportional caps for an intentional read. */
+  font-feature-settings: 'cv01', 'cv03', 'cv04', 'ss01', 'zero', 'cv11';
+  text-rendering: optimizeLegibility;
+}
+
+/* Display headlines: Space Grotesk, optically tightened. */
+.font-display {
+  font-feature-settings: 'ss01', 'ss02';
+}
+
+/* Tabular, slashed-zero figures for code-adjacent numerics (shas, counts, latencies). */
+.tnum {
+  font-feature-settings: 'tnum', 'zero';
+  font-variant-numeric: tabular-nums slashed-zero;
 }
 
 /* Kept for layout compatibility; the flat theme uses no decorative grid. */
@@ -58,7 +72,7 @@ body {
 .prose-arch p { @apply my-3; }
 .prose-arch ul { @apply list-disc pl-5 my-3 space-y-1.5; }
 .prose-arch ol { @apply list-decimal pl-5 my-3 space-y-1.5; }
-.prose-arch a { @apply text-accent-soft underline decoration-accent/40 hover:decoration-accent; }
+.prose-arch a { @apply text-slate-200 underline decoration-white/20 hover:decoration-white/60; }
 .prose-arch code { @apply font-mono text-[0.85em] bg-ink-800 text-accent-soft px-1.5 py-0.5 rounded; }
 .prose-arch pre { @apply bg-ink-900 border border-white/5 rounded-xl p-4 my-4 overflow-x-auto text-[0.82rem]; }
 .prose-arch pre code { @apply bg-transparent p-0 text-slate-300; }

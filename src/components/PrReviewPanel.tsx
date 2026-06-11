@@ -13,7 +13,7 @@ interface Props {
 const SEVERITY: Record<PRFinding['severity'], { icon: React.ReactNode; ring: string; text: string; label: string }> = {
   conflict: { icon: <ShieldAlert className="h-4 w-4" />, ring: 'ring-rose-400/30 bg-rose-500/5', text: 'text-rose-300', label: 'Conflict' },
   warning: { icon: <AlertTriangle className="h-4 w-4" />, ring: 'ring-amber-400/30 bg-amber-500/5', text: 'text-amber-300', label: 'Warning' },
-  info: { icon: <Info className="h-4 w-4" />, ring: 'ring-sky-400/30 bg-sky-500/5', text: 'text-sky-300', label: 'Info' },
+  info: { icon: <Info className="h-4 w-4" />, ring: 'ring-white/15 bg-white/[0.03]', text: 'text-slate-300', label: 'Info' },
 };
 
 export default function PrReviewPanel({ profile, adrs, pat }: Props) {

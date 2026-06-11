@@ -159,7 +159,7 @@ function FeatureStrip() {
     {
       icon: ScrollText,
       title: 'Grounded ADRs',
-      body: 'Five to eight Architecture Decision Records — every claim cites the dependency, file, or config it was inferred from.',
+      body: 'Architecture Decision Records — every claim cites the dependency, file, or config it was inferred from.',
     },
     {
       icon: MessageSquareText,
@@ -201,7 +201,7 @@ function FeatureStrip() {
         ].map((s, i) => (
           <div key={s.n} className="flex items-center">
             <div className="flex items-center gap-3 px-5">
-              <span className="font-mono text-[11px] text-accent-soft/70">{s.n}</span>
+              <span className="font-mono text-[11px] text-slate-500">{s.n}</span>
               <div className="leading-tight">
                 <p className="text-[13px] font-medium text-slate-200">{s.label}</p>
                 <p className="text-[11px] text-slate-600">{s.sub}</p>
@@ -220,10 +220,10 @@ function FeatureStrip() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25 + i * 0.08 }}
-            className="group rounded-xl border border-white/[0.07] bg-ink-900/60 p-5 transition hover:border-accent/25 hover:bg-ink-900"
+            className="group rounded-xl border border-white/[0.07] bg-ink-900/60 p-5 transition hover:border-white/15 hover:bg-ink-900"
           >
-            <span className="grid h-9 w-9 place-items-center rounded-lg bg-accent/10 ring-1 ring-accent/20 transition group-hover:bg-accent/15">
-              <f.icon className="h-4 w-4 text-accent-soft" />
+            <span className="grid h-9 w-9 place-items-center rounded-lg bg-white/[0.04] ring-1 ring-white/10 transition group-hover:bg-white/[0.07]">
+              <f.icon className="h-4 w-4 text-slate-400" />
             </span>
             <h3 className="mt-3.5 text-[14px] font-semibold text-slate-100">{f.title}</h3>
             <p className="mt-1.5 text-[12.5px] leading-relaxed text-slate-500">{f.body}</p>
@@ -259,11 +259,16 @@ function Footer() {
   return (
     <footer className="border-t border-white/5 py-7">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-5 text-[11px] text-slate-600 sm:flex-row">
-        <span>
-          <span className="font-medium text-slate-500">ArchDecision</span> — institutional memory your codebase never
-          had.
+        <span className="flex items-center gap-1.5">
+          <span className="font-display font-medium text-slate-500">ArchDecision</span>
+          <span className="text-slate-700">·</span>
+          institutional memory your codebase never had.
         </span>
-        <span>ADRs are inferred drafts to confirm, not ground truth.</span>
+        <span className="tnum flex items-center gap-1.5">
+          ADRs are inferred drafts to confirm, not ground truth.
+          <span className="text-slate-700">·</span>
+          <span>&copy; 2026 Harsh Kawatra</span>
+        </span>
       </div>
     </footer>
   );

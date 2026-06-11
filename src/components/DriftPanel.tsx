@@ -64,7 +64,7 @@ export default function DriftPanel({ profile, adrs, pat }: Props) {
   if (busy) {
     return (
       <div className="grid place-items-center py-12 text-center">
-        <Loader2 className="mb-3 h-7 w-7 animate-spin text-accent" />
+        <Loader2 className="mb-3 h-7 w-7 animate-spin text-slate-400" />
         <p className="text-sm text-slate-400">Comparing the decisions against the current structure…</p>
       </div>
     );
@@ -79,7 +79,7 @@ export default function DriftPanel({ profile, adrs, pat }: Props) {
         <button
           onClick={run}
           disabled={busy}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-slate-300 transition hover:border-accent/40 disabled:opacity-40"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-slate-300 transition hover:border-white/25 disabled:opacity-40"
         >
           <GitCompareArrows className="h-3.5 w-3.5" />
           Re-map

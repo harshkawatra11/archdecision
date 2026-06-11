@@ -70,7 +70,7 @@ export default function AskPanel({ profile, pat }: Props) {
                 <button
                   key={s}
                   onClick={() => send(s)}
-                  className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-400 transition hover:border-accent/40 hover:text-accent-soft"
+                  className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-400 transition hover:border-white/25 hover:text-slate-200"
                 >
                   {s}
                 </button>
@@ -82,7 +82,7 @@ export default function AskPanel({ profile, pat }: Props) {
         )}
       </div>
 
-      <div className="mt-4 flex items-center gap-2 rounded-xl border border-white/10 bg-ink-900 p-2 pl-4 focus-within:border-accent/40">
+      <div className="mt-4 flex items-center gap-2 rounded-xl border border-white/10 bg-ink-900 p-2 pl-4 focus-within:border-white/25">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -106,7 +106,7 @@ function Bubble({ msg, owner, repo, sha }: { msg: ChatMessage; owner: string; re
   if (msg.role === 'user') {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-2xl rounded-br-md bg-accent/15 px-4 py-2.5 text-sm text-slate-100 ring-1 ring-accent/20">
+        <div className="max-w-[85%] rounded-2xl rounded-br-md bg-white/[0.07] px-4 py-2.5 text-sm text-slate-100 ring-1 ring-white/10">
           {msg.content}
         </div>
       </div>
@@ -131,7 +131,7 @@ function Bubble({ msg, owner, repo, sha }: { msg: ChatMessage; owner: string; re
                 target="_blank"
                 rel="noreferrer noopener"
                 title={s.reason}
-                className="inline-flex items-center gap-1 rounded-md bg-ink-800 px-2 py-1 font-mono text-[11px] text-accent-soft transition hover:bg-ink-700"
+                className="inline-flex items-center gap-1 rounded-md bg-ink-800 px-2 py-1 font-mono text-[11px] text-slate-300 transition hover:bg-ink-700 hover:text-white"
               >
                 <FileText className="h-3 w-3" />
                 {s.path}

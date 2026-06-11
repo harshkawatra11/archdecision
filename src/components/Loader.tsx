@@ -43,15 +43,15 @@ export default function Loader({ onDone }: { onDone: () => void }) {
         <svg className="loader-mark mb-6 h-16 w-16" viewBox="0 0 32 32" fill="none">
           <path
             d="M9 22 L16 8 L23 22"
-            stroke="#5b8cff"
+            stroke="#2ea043"
             strokeWidth="2.4"
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeDasharray="220"
           />
-          <path d="M12.2 16 H19.8" stroke="#8fb0ff" strokeWidth="2.4" strokeLinecap="round" strokeDasharray="220" />
+          <path d="M12.2 16 H19.8" stroke="#3fb950" strokeWidth="2.4" strokeLinecap="round" strokeDasharray="220" />
         </svg>
-        <div className="loader-word flex text-2xl font-semibold tracking-tight text-slate-100">
+        <div className="loader-word flex font-display text-2xl font-semibold tracking-tight text-slate-100">
           {word.split('').map((c, i) => (
             <span key={i} className="inline-block">
               {c}

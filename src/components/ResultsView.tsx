@@ -113,7 +113,7 @@ export default function ResultsView({ profile, adrs, pat, onboardingDoc, setOnbo
             href={`https://github.com/${profile.owner}`}
             target="_blank"
             rel="noreferrer noopener"
-            className="truncate font-normal text-accent hover:underline"
+            className="truncate font-normal text-slate-200 hover:underline"
           >
             {profile.owner}
           </a>
@@ -122,7 +122,7 @@ export default function ResultsView({ profile, adrs, pat, onboardingDoc, setOnbo
             href={`https://github.com/${profile.owner}/${profile.repo}`}
             target="_blank"
             rel="noreferrer noopener"
-            className="truncate font-semibold text-accent hover:underline"
+            className="truncate font-semibold text-slate-200 hover:underline"
           >
             {profile.repo}
           </a>
@@ -164,7 +164,7 @@ export default function ResultsView({ profile, adrs, pat, onboardingDoc, setOnbo
         </div>
       </div>
 
-      <p className="-mt-1 pb-3 font-mono text-[11px] text-slate-500">
+      <p className="tnum -mt-1 pb-3 font-mono text-[11px] text-slate-500">
         <GitCommitHorizontal className="mr-1 inline h-3.5 w-3.5 align-[-2px]" />
         {profile.defaultBranch} @ {profile.sha.slice(0, 10)} · {profile.stats.totalFiles.toLocaleString()} files ·{' '}
         {Object.keys(profile.languages).slice(0, 3).join(', ')}
@@ -195,7 +195,7 @@ export default function ResultsView({ profile, adrs, pat, onboardingDoc, setOnbo
               {active && (
                 <motion.span
                   layoutId="tab-underline"
-                  className="absolute inset-x-1 -bottom-px h-[2px] rounded-full bg-[#f78166]"
+                  className="absolute inset-x-1 -bottom-px h-[2px] rounded-full bg-white/70"
                   transition={{ type: 'spring', stiffness: 500, damping: 40 }}
                 />
               )}
@@ -313,7 +313,7 @@ function DecisionList({ adrs, onOpen }: { adrs: ADR[]; onOpen: (i: number) => vo
                 <CircleDot className={`mt-0.5 h-4 w-4 shrink-0 ${c.icon}`} />
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-2">
-                    <span className="text-[14.5px] font-semibold text-slate-100 hover:text-accent">{adr.title}</span>
+                    <span className="text-[14.5px] font-semibold text-slate-100 hover:text-white">{adr.title}</span>
                     <span className="inline-flex items-center gap-1 rounded-full border border-ink-500 px-2 py-px text-[11px] capitalize text-slate-400">
                       <Icon className="h-3 w-3" />
                       {adr.category}
@@ -399,7 +399,7 @@ function RecordPage({
       <div className="mb-4 flex items-center justify-between">
         <button
           onClick={back}
-          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-accent hover:underline"
+          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-slate-200 hover:underline"
         >
           <ChevronLeft className="h-4 w-4" />
           All decisions
@@ -427,7 +427,7 @@ function RecordPage({
             href={`https://github.com/${owner}/${repo}/tree/${sha}`}
             target="_blank"
             rel="noreferrer noopener"
-            className="font-mono text-accent hover:underline"
+            className="font-mono text-slate-200 hover:underline"
           >
             {owner}/{repo}@{sha.slice(0, 7)}
           </a>
@@ -500,7 +500,7 @@ function RecordPage({
                               href={`https://github.com/${owner}/${repo}/blob/${sha}/${filePart}`}
                               target="_blank"
                               rel="noreferrer noopener"
-                              className="break-all font-mono text-[12px] text-accent hover:underline"
+                              className="break-all font-mono text-[12px] text-slate-200 hover:underline"
                             >
                               {e.ref}
                             </a>
@@ -522,7 +522,7 @@ function RecordPage({
             {index > 0 ? (
               <button
                 onClick={prev}
-                className="group inline-flex max-w-[45%] items-center gap-2 text-left text-[13px] text-slate-400 transition hover:text-accent"
+                className="group inline-flex max-w-[45%] items-center gap-2 text-left text-[13px] text-slate-400 transition hover:text-white"
               >
                 <ArrowLeft className="h-4 w-4 shrink-0" />
                 <span className="truncate">{adrs[index - 1].title}</span>
@@ -533,7 +533,7 @@ function RecordPage({
             {index < adrs.length - 1 ? (
               <button
                 onClick={next}
-                className="group inline-flex max-w-[45%] items-center gap-2 text-right text-[13px] text-slate-400 transition hover:text-accent"
+                className="group inline-flex max-w-[45%] items-center gap-2 text-right text-[13px] text-slate-400 transition hover:text-white"
               >
                 <span className="truncate">{adrs[index + 1].title}</span>
                 <ArrowRight className="h-4 w-4 shrink-0" />
