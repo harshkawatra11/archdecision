@@ -6,7 +6,7 @@ import { GitHubError, parseRepoUrl } from './_lib/github.js';
 import { buildRepoProfile, hasSufficientSignal } from './_lib/ingest.js';
 import { toLite } from './_lib/profile.js';
 import { adrUserPrompt, ADR_SYSTEM } from './_lib/prompts.js';
-import { extractJson, generate, isLLMConfigured, LLMConfigError } from './_lib/llm.js';
+import { extractJson, generate, humanizeLLMError, isLLMConfigured, LLMConfigError } from './_lib/llm.js';
 import { validateAdrArray } from './_lib/schema.js';
 import { cacheProfile } from './_lib/cache.js';
 import type { ADR, RepoProfile } from './_lib/schema.js';
