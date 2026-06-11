@@ -34,7 +34,7 @@ export default async function handler(req: Req, res: Res) {
     return sendError(res, {
       status: 503,
       message: 'The analysis engine is not configured on the server.',
-      hint: 'Set GEMINI_API_KEY in the environment and redeploy.',
+      hint: 'Set LLM_API_KEY in the environment and redeploy.',
     });
   }
 

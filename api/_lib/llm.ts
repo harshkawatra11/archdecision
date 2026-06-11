@@ -1,26 +1,26 @@
-// Thin, swappable LLM interface (PRD §16 portability). Default provider: Gemini 2.5 Flash.
-// The Gemini key lives ONLY here (server-side env var) and never reaches the client.
+// Thin, swappable LLM interface (PRD §16 portability). Default provider: GitHub Models
+// (OpenAI-compatible). The token lives ONLY here (server-side env var) and never reaches
+// the client. Swap providers by changing LLM_BASE_URL / LLM_MODEL / token env vars —
+// any OpenAI-compatible endpoint (GitHub Models, Groq, OpenRouter, Cerebras) works.
 
-import { GoogleGenAI } from '@google/genai';
-
-const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const BASE_URL = (process.env.LLM_BASE_URL || 'https://models.github.ai/inference').replace(/\/$/, '');
+// Back-compat: GEMINI_MODEL was the old name. Default to a fast, free GitHub Models id.
+const MODEL = process.env.LLM_MODEL || process.env.GEMINI_MODEL || 'openai/gpt-4o-mini';
 
 export class LLMConfigError extends Error {}
 
-let client: GoogleGenAI | null = null;
-function getClient(): GoogleGenAI {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
+function getToken(): string {
+  const token = process.env.LLM_API_KEY || process.env.GITHUB_MODELS_TOKEN || process.env.GITHUB_TOKEN;
+  if (!token) {
     throw new LLMConfigError(
-      'GEMINI_API_KEY is not configured on the server. Add it to your environment (.env locally, project settings on Vercel).',
+      'No model API key configured on the server. Set LLM_API_KEY in your environment (.env locally, project settings on Vercel).',
     );
   }
-  if (!client) client = new GoogleGenAI({ apiKey });
-  return client;
+  return token;
 }
 
 export function isLLMConfigured(): boolean {
-  return !!process.env.GEMINI_API_KEY;
+  return !!(process.env.LLM_API_KEY || process.env.GITHUB_MODELS_TOKEN || process.env.GITHUB_TOKEN);
 }
 
 export interface GenerateOptions {
@@ -30,35 +30,92 @@ export interface GenerateOptions {
   temperature?: number;
 }
 
-/** One-shot generation. Returns the full text. */
-export async function generate({ system, user, json, temperature }: GenerateOptions): Promise<string> {
-  const ai = getClient();
-  const res = await ai.models.generateContent({
+interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+function buildBody({ system, user, json, temperature }: GenerateOptions, stream: boolean) {
+  const messages: ChatMessage[] = [
+    { role: 'system', content: system },
+    { role: 'user', content: user },
+  ];
+  // Note: we deliberately do NOT set response_format=json_object. That mode forces a
+  // JSON *object*, but the ADR/drift prompts expect a JSON *array*. The prompts already
+  // instruct "return JSON only" and extractJson tolerates fences/prose, which is both
+  // robust and portable across OpenAI-compatible providers. `json` only lowers temperature.
+  return {
     model: MODEL,
-    contents: user,
-    config: {
-      systemInstruction: system,
-      temperature: temperature ?? (json ? 0.1 : 0.4),
-      ...(json ? { responseMimeType: 'application/json' } : {}),
+    messages,
+    temperature: temperature ?? (json ? 0.1 : 0.4),
+    stream,
+  };
+}
+
+/** Turn a non-2xx response into a descriptive Error so humanizeLLMError can map it. */
+async function toError(res: Response): Promise<Error> {
+  let detail = '';
+  try {
+    detail = await res.text();
+  } catch {
+    /* ignore */
+  }
+  return new Error(`${res.status} ${res.statusText} ${detail}`.trim());
+}
+
+/** One-shot generation. Returns the full text. */
+export async function generate(opts: GenerateOptions): Promise<string> {
+  const token = getToken();
+  const res = await fetch(`${BASE_URL}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
     },
+    body: JSON.stringify(buildBody(opts, false)),
   });
-  return res.text ?? '';
+  if (!res.ok) throw await toError(res);
+  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  return data.choices?.[0]?.message?.content ?? '';
 }
 
 /** Streaming generation. Yields text deltas. */
-export async function* generateStream({ system, user, temperature }: GenerateOptions): AsyncGenerator<string> {
-  const ai = getClient();
-  const stream = await ai.models.generateContentStream({
-    model: MODEL,
-    contents: user,
-    config: {
-      systemInstruction: system,
-      temperature: temperature ?? 0.4,
+export async function* generateStream(opts: GenerateOptions): AsyncGenerator<string> {
+  const token = getToken();
+  const res = await fetch(`${BASE_URL}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
     },
+    body: JSON.stringify(buildBody(opts, true)),
   });
-  for await (const chunk of stream) {
-    const t = chunk.text;
-    if (t) yield t;
+  if (!res.ok) throw await toError(res);
+  if (!res.body) return;
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    // OpenAI-compatible SSE: lines of "data: {json}" separated by blank lines.
+    let nl: number;
+    while ((nl = buffer.indexOf('\n')) !== -1) {
+      const line = buffer.slice(0, nl).trim();
+      buffer = buffer.slice(nl + 1);
+      if (!line.startsWith('data:')) continue;
+      const payload = line.slice(5).trim();
+      if (payload === '[DONE]') return;
+      try {
+        const json = JSON.parse(payload) as { choices?: { delta?: { content?: string } }[] };
+        const t = json.choices?.[0]?.delta?.content;
+        if (t) yield t;
+      } catch {
+        /* skip keep-alive / partial frames */
+      }
+    }
   }
 }
 
@@ -70,13 +127,16 @@ export function humanizeLLMError(e: unknown): string {
   if (e instanceof LLMConfigError) return e.message;
   const raw = e instanceof Error ? e.message : String(e ?? '');
   const s = raw.toLowerCase();
+  if (s.includes('401') || s.includes('403') || s.includes('unauthorized') || s.includes('forbidden')) {
+    return 'The model API key was rejected. Check LLM_API_KEY (and LLM_BASE_URL) are valid and set in the deployment.';
+  }
   if (s.includes('429') || s.includes('quota') || s.includes('resource_exhausted') || s.includes('rate limit')) {
     return 'The model is rate-limited on the free tier right now. Wait a few seconds and try again.';
   }
   if (s.includes('503') || s.includes('overloaded') || s.includes('unavailable')) {
     return 'The model is temporarily overloaded. Please try again in a moment.';
   }
-  if (s.includes('safety') || s.includes('blocked')) {
+  if (s.includes('safety') || s.includes('blocked') || s.includes('content_filter')) {
     return 'The model declined to answer for this content. Try a different repository or question.';
   }
   if (s.includes('timeout') || s.includes('deadline')) {
