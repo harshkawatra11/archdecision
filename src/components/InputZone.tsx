@@ -80,10 +80,7 @@ export default function InputZone({ onAnalyze, busy }: Props) {
                 key={r.url}
                 disabled={busy}
                 title={r.note}
-                onClick={() => {
-                  setUrl(r.url);
-                  onAnalyze(r.url, pat.trim());
-                }}
+                onClick={() => setUrl(r.url)}
                 className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-2.5 py-1.5 font-mono text-slate-400 transition hover:border-white/20 hover:bg-white/[0.05] hover:text-slate-200 disabled:opacity-40"
               >
                 {r.label}

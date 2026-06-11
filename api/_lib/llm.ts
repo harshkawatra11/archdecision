@@ -3,9 +3,13 @@
 // the client. Swap providers by changing LLM_BASE_URL / LLM_MODEL / token env vars —
 // any OpenAI-compatible endpoint (GitHub Models, Groq, OpenRouter, Cerebras) works.
 
-const BASE_URL = (process.env.LLM_BASE_URL || 'https://models.github.ai/inference').replace(/\/$/, '');
-// Back-compat: GEMINI_MODEL was the old name. Default to a fast, free GitHub Models id.
-const MODEL = process.env.LLM_MODEL || process.env.GEMINI_MODEL || 'openai/gpt-4o-mini';
+// Read at call time (not module load) so .env is already loaded when these are evaluated.
+function getBaseUrl() {
+  return (process.env.LLM_BASE_URL || 'https://models.github.ai/inference').replace(/\/$/, '');
+}
+function getModel() {
+  return process.env.LLM_MODEL || process.env.GEMINI_MODEL || 'openai/gpt-4o-mini';
+}
 
 export class LLMConfigError extends Error {}
 
@@ -45,7 +49,7 @@ function buildBody({ system, user, json, temperature }: GenerateOptions, stream:
   // instruct "return JSON only" and extractJson tolerates fences/prose, which is both
   // robust and portable across OpenAI-compatible providers. `json` only lowers temperature.
   return {
-    model: MODEL,
+    model: getModel(),
     messages,
     temperature: temperature ?? (json ? 0.1 : 0.4),
     stream,
@@ -66,7 +70,7 @@ async function toError(res: Response): Promise<Error> {
 /** One-shot generation. Returns the full text. */
 export async function generate(opts: GenerateOptions): Promise<string> {
   const token = getToken();
-  const res = await fetch(`${BASE_URL}/chat/completions`, {
+  const res = await fetch(`${getBaseUrl()}/chat/completions`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -74,7 +78,11 @@ export async function generate(opts: GenerateOptions): Promise<string> {
     },
     body: JSON.stringify(buildBody(opts, false)),
   });
-  if (!res.ok) throw await toError(res);
+  if (!res.ok) {
+    const err = await toError(res);
+    console.error('[llm] generate error:', err.message.slice(0, 300));
+    throw err;
+  }
   const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
   return data.choices?.[0]?.message?.content ?? '';
 }
@@ -82,7 +90,7 @@ export async function generate(opts: GenerateOptions): Promise<string> {
 /** Streaming generation. Yields text deltas. */
 export async function* generateStream(opts: GenerateOptions): AsyncGenerator<string> {
   const token = getToken();
-  const res = await fetch(`${BASE_URL}/chat/completions`, {
+  const res = await fetch(`${getBaseUrl()}/chat/completions`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -129,6 +137,9 @@ export function humanizeLLMError(e: unknown): string {
   const s = raw.toLowerCase();
   if (s.includes('401') || s.includes('403') || s.includes('unauthorized') || s.includes('forbidden')) {
     return 'The model API key was rejected. Check LLM_API_KEY (and LLM_BASE_URL) are valid and set in the deployment.';
+  }
+  if (s.includes('413') || s.includes('too large') || s.includes('payload') || s.includes('tokens per minute') || s.includes('reduce your message')) {
+    return 'This repository is too large for the free model tier. Try a smaller repo, or add a GitHub token to reduce the fetched file count.';
   }
   if (s.includes('429') || s.includes('quota') || s.includes('resource_exhausted') || s.includes('rate limit')) {
     return 'The model is rate-limited on the free tier right now. Wait a few seconds and try again.';

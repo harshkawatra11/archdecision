@@ -10,9 +10,9 @@ import {
 import { computeStructureSummary, estimateTokens, manifestEcosystem, parseManifest } from './profile.js';
 import type { FileNode, RepoProfile, SignalFile } from './schema.js';
 
-const PER_FILE_CHAR_CAP = 8000;
-const MAX_SIGNAL_FILES = 20; // keep unauth GitHub demos under the 60/hr limit
-const TOKEN_BUDGET = 220_000; // defensive; Flash allows far more
+const PER_FILE_CHAR_CAP = 2000; // ~500 tokens/file; keep total prompt under 6k for free-tier LLMs
+const MAX_SIGNAL_FILES = 12;
+const TOKEN_BUDGET = 4_000; // ~4k tokens leaves room for system prompt + response
 
 const MANIFEST_NAMES = new Set([
   'package.json',

@@ -52,7 +52,8 @@ function headers(pat?: string): Record<string, string> {
     'X-GitHub-Api-Version': '2022-11-28',
     'User-Agent': 'ArchDecision',
   };
-  if (pat) h.Authorization = `Bearer ${pat}`;
+  const token = pat || process.env.GITHUB_TOKEN;
+  if (token) h.Authorization = `Bearer ${token}`;
   return h;
 }
 
