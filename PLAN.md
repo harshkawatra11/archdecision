@@ -5,8 +5,7 @@
 ArchDecision is a web app for the Microsoft Build AI Hackathon 2026 that reads any
 public GitHub repo and reverse-engineers the architectural decisions baked into it,
 producing: (A) grounded Architecture Decision Records, (B) a "Ask Your Codebase"
-grounded chat, and (C) a one-click onboarding doc. The build target is a solo dev +
-Claude Code over 5 days on entirely free infrastructure, optimized for a 4-minute live
+grounded chat, and (C) a one-click onboarding doc. The build target is a solo dev over 5 days on entirely free infrastructure, optimized for a 4-minute live
 demo. This plan turns [ArchDecision_PRD.txt](ArchDecision_PRD.txt) into an executable
 build. The directory is currently greenfield (only the PRD exists).
 
