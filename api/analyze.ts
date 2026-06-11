@@ -127,6 +127,11 @@ function handleStreamError(res: Res, e: unknown): void {
     message = e.message;
   } else if (e instanceof ModelFormatError) {
     message = e.message;
+  } else {
+    // Any remaining error is most likely from the LLM provider (bad key, rate
+    // limit, overload). Surface a readable, actionable message instead of the
+    // generic fallback.
+    message = humanizeLLMError(e);
   }
   // If headers already sent (SSE open), emit an error event; else send JSON.
   if (res.headersSent || (res as unknown as { writableEnded?: boolean }).writableEnded === false) {
