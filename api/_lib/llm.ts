@@ -5,16 +5,19 @@
 
 // Read at call time (not module load) so .env is already loaded when these are evaluated.
 function getBaseUrl() {
-  return (process.env.LLM_BASE_URL || 'https://models.github.ai/inference').replace(/\/$/, '');
+  return (process.env.LLM_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta/openai').replace(/\/$/, '');
 }
 function getModel() {
-  return process.env.LLM_MODEL || process.env.GEMINI_MODEL || 'openai/gpt-4o-mini';
+  return process.env.LLM_MODEL || process.env.GEMINI_MODEL || 'gemini-2.0-flash';
 }
 
 export class LLMConfigError extends Error {}
 
 function getToken(): string {
-  const token = process.env.LLM_API_KEY || process.env.GITHUB_MODELS_TOKEN || process.env.GITHUB_TOKEN;
+  const token =
+    process.env.LLM_API_KEY ||
+    process.env.GEMINI_API_KEY ||
+    process.env.GITHUB_MODELS_TOKEN;
   if (!token) {
     throw new LLMConfigError(
       'No model API key configured on the server. Set LLM_API_KEY in your environment (.env locally, project settings on Vercel).',
@@ -24,7 +27,7 @@ function getToken(): string {
 }
 
 export function isLLMConfigured(): boolean {
-  return !!(process.env.LLM_API_KEY || process.env.GITHUB_MODELS_TOKEN || process.env.GITHUB_TOKEN);
+  return !!(process.env.LLM_API_KEY || process.env.GEMINI_API_KEY || process.env.GITHUB_MODELS_TOKEN);
 }
 
 export interface GenerateOptions {

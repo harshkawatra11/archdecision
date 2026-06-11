@@ -42,7 +42,7 @@ app.post('/api/drift', mount(drift as Handler));
 
 const port = Number(process.env.API_PORT || 3001);
 app.listen(port, () => {
-  const configured = !!(process.env.LLM_API_KEY || process.env.GITHUB_MODELS_TOKEN || process.env.GITHUB_TOKEN);
+  const configured = !!(process.env.LLM_API_KEY || process.env.GEMINI_API_KEY || process.env.GITHUB_MODELS_TOKEN);
   console.log(`\n  ArchDecision API → http://localhost:${port}`);
   console.log(`  LLM_API_KEY ${configured ? 'detected ✓' : 'NOT set ✗ (analysis will return a friendly 503)'}\n`);
 });
