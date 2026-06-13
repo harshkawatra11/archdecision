@@ -9,10 +9,13 @@ grounded chat, and (C) a one-click onboarding doc. The build target is a solo de
 demo. This plan turns [ArchDecision_PRD.txt](ArchDecision_PRD.txt) into an executable
 build. The directory is currently greenfield (only the PRD exists).
 
-**Decisions locked with the user:**
+**Locked decisions:**
 - **Host:** Vercel (static frontend + serverless functions on one free deploy).
-- **LLM:** Gemini 2.5 Flash (free tier, 1M context, native JSON mode). Key lives only
-  in serverless env vars — never in the client bundle.
+- **LLM:** Gemini 2.5 Flash by default, reached over an OpenAI-compatible
+  `/chat/completions` endpoint behind a swappable interface (`LLM_BASE_URL` /
+  `LLM_MODEL` / `LLM_API_KEY`). JSON is prompt-instructed and tolerantly parsed,
+  not native `json_object` mode. Key lives only in serverless env vars — never in
+  the client bundle.
 - **Scope:** Full 5-day plan, build core (Features A/B/C) first; stretch (D/E) gated.
 
 **Guiding principles** (resolve all ambiguity): Grounded-or-silent · Zero setup to first
@@ -26,7 +29,8 @@ value · Artifacts not just answers · Honest confidence labels · Fast perceive
 - **Frontend:** React + Vite + TypeScript + Tailwind. `react-markdown` for ADR/doc
   rendering. SSE/`ReadableStream` for streaming.
 - **Backend:** Vercel serverless functions (Node.js + TypeScript) under `/api`.
-- **External:** GitHub REST API (plain `fetch`, no SDK) · Gemini 2.5 Flash (`@google/genai`).
+- **External:** GitHub REST API and the model API, both over plain `fetch` (no SDK).
+  The model is any OpenAI-compatible endpoint (Gemini 2.5 Flash by default).
 - **No DB, no auth, no paid services.** Optional in-memory profile cache keyed by
   `${owner}/${repo}@${sha}` (best-effort; rebuilds on cold function).
 
@@ -38,12 +42,13 @@ value · Artifacts not just answers · Honest confidence labels · Fast perceive
   ask.ts            # POST /api/ask      — grounded Q&A (SSE)
   onboarding.ts     # POST /api/onboarding (SSE Markdown)
   pr-review.ts      # POST /api/pr-review (stretch)
+  drift.ts          # POST /api/drift     — tech-debt drift map (stretch)
   health.ts         # GET  /api/health
   _lib/
     github.ts       # URL parse, metadata, tree, contents, rate-limit handling
     ingest.ts       # signal-file selection, manifest parsing, RepoProfile assembly
     profile.ts      # RepoProfile + structureSummary builders, token budgeting
-    llm.ts          # thin Gemini wrapper (generate, JSON mode, stream) — swappable
+    llm.ts          # thin OpenAI-compatible wrapper (generate, stream, prompt-JSON) — swappable provider
     prompts.ts      # system/user prompts for ADR, ask, onboarding, pr-review
     schema.ts       # shared TS types + JSON schema + validators (Section 11)
 /src
@@ -61,7 +66,8 @@ Shared types (`schema.ts` mirrored into `src/types.ts`) come straight from PRD �
 
 ### Day 1 — Foundations + ingestion (riskiest; front-load)
 - Scaffold Vite + React + TS + Tailwind; init `/api` functions; deploy a "hello"
-  to Vercel **today** to de-risk deployment. Set `GEMINI_API_KEY` in Vercel env.
+  to Vercel **today** to de-risk deployment. Set `LLM_API_KEY`, `LLM_BASE_URL`,
+  `LLM_MODEL`, and `GITHUB_TOKEN` in Vercel env.
 - `_lib/github.ts`: parse URL forms (`https://github.com/o/r[.git]`, `github.com/o/r`,
   `o/r`); `GET /repos/{o}/{r}` (default branch, sha, description, visibility);
   `GET /git/trees/{branch}?recursive=1` (whole tree, one call; honor GitHub `truncated`).
@@ -79,8 +85,8 @@ Shared types (`schema.ts` mirrored into `src/types.ts`) come straight from PRD �
 
 ### Day 2 — Feature A: ADR generation end-to-end
 - `_lib/llm.ts` + `_lib/prompts.ts`: ADR system prompt (architectural-autopsy,
-  grounded, confidence-labeled — PRD §14.2) + JSON mode against ADR schema; one
-  schema-repair retry on validation failure; low temperature.
+  grounded, confidence-labeled — PRD §14.2) + prompt-instructed JSON validated
+  against the ADR schema; one schema-repair retry on validation failure; low temperature.
 - `analyze.ts`: SSE stage events (`fetching → structure → signals → inferring → done`)
   then final payload `{ profileLite, adrs[], sha }`. Confidence rubric per §25.3.
 - Frontend: InputZone (URL + collapsible PAT note "used only this request, never
@@ -130,9 +136,11 @@ Shared types (`schema.ts` mirrored into `src/types.ts`) come straight from PRD �
   never raw concatenated files. Every ADR claim cites `Evidence[]`.
 - **Streaming everywhere** for perceived speed; never a bare 60s spinner.
 - **LLM layer behind a thin interface** so Gemini is swappable without touching features.
-- **Token budget:** target <250k input tokens for analyze, far less for ask.
-- **Security:** Gemini key server-side only (verify built bundle has no key); repo
-  text treated as DATA not instructions (prompt-injection framing in system prompts).
+- **Token budget:** target ~40k input tokens for analyze (`TOKEN_BUDGET` in
+  `ingest.ts`; ~8k chars/file, ~20 signal files), far less for ask.
+- **Security:** model key (`LLM_API_KEY`) server-side only (verify built bundle has
+  no key); repo text treated as DATA not instructions (prompt-injection framing in
+  system prompts).
 
 ## Verification
 - Per-feature acceptance (§21.1): A → 5–8 ADRs <60s, each with non-empty

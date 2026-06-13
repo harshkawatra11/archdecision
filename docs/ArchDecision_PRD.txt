@@ -5,7 +5,7 @@
 
 Document version:    1.0
 Prepared for:        Microsoft Build AI Hackathon 2026
-Build window:        5 days, solo developer + Claude Code
+Build window:        5 days, solo developer
 Status:              Build-ready specification
 Classification:      Internal engineering + product spec
 
@@ -48,8 +48,8 @@ TABLE OF CONTENTS
 0.  HOW TO READ THIS DOCUMENT
 ================================================================================
 
-This PRD is written to be handed directly to Claude Code, section by section,
-as build instructions. Every feature section follows the same structure:
+This PRD is written to be followed section by section as build instructions.
+Every feature section follows the same structure:
 
     WHY USERS CARE      — the human reason this exists
     WHAT IT DOES        — plain-English behavior
@@ -61,7 +61,7 @@ as build instructions. Every feature section follows the same structure:
     DEMO MOMENT         — how this feature shows on stage
 
 The document assumes:
-    - Solo developer working with Claude Code
+    - Solo developer
     - 5 calendar days, realistically ~40 focused hours
     - Zero paid API credits
     - Free-tier everything: Gemini 2.5 Flash, GitHub public API, free hosting
@@ -395,9 +395,9 @@ MVP IMPLEMENTATION
     - Detect languages from file extensions + manifests.
     - Parse the top dependency manifest fully; extract direct dependencies.
     - Pull file tree (recursive) to understand structure; do NOT pull every file.
-    - Pull README + up to ~15 signal files, capped at a total token budget.
-    - Single Gemini call returning a JSON array of ADRs (use response schema /
-      JSON mode for reliability).
+    - Pull README + up to ~20 signal files, capped at a total token budget.
+    - Single model call returning a JSON array of ADRs (prompt-instructed JSON
+      plus tolerant extraction and schema validation for reliability).
     - Render as collapsible cards + "Download all as .md" button.
 
 ARCHITECTURE
@@ -672,7 +672,7 @@ DEMO MOMENT
     4. Backend: GET recursive tree
     5. Backend: select signal files; GET their contents (batched, budgeted)
     6. Backend: assemble repo profile (structured object)
-    7. Backend: call Gemini with ADR prompt (JSON mode)
+    7. Backend: call the model with the ADR prompt (prompt-instructed JSON)
     8. Backend: validate JSON against ADR schema
     9. Backend: return {profile (lite), adrs[], sha}
     10. Frontend: render; cache sha for subsequent /ask and /onboarding calls
@@ -681,31 +681,31 @@ DEMO MOMENT
 10.  TECHNOLOGY STACK AND JUSTIFICATION
 ================================================================================
 
-Every choice here optimizes for: free, fast to build with Claude Code, reliable
+Every choice here optimizes for: free, fast to build, reliable
 in a live demo. Each line is itself a small ADR.
 
-    LLM:                Gemini 2.5 Flash
-        Why: generous free tier, fast, 1M-token context window (lets us feed
-        large repo profiles without aggressive chunking), native JSON mode for
-        structured ADR output. The product is model-agnostic; Flash is the
-        free-tier choice.
+    LLM:                Gemini 2.5 Flash (default), via any OpenAI-compatible endpoint
+        Why: generous free tier, fast, large context window (lets us feed large
+        repo profiles without aggressive chunking). Reached over a plain
+        OpenAI-compatible /chat/completions call behind a swappable interface, so
+        the provider (Gemini, Groq, OpenRouter, GitHub Models) changes by env var
+        alone. JSON is prompt-instructed and tolerantly parsed, not native
+        json_object mode, because the ADR payload is a JSON array.
 
     Frontend framework: React (Vite) + Tailwind
-        Why: fastest path to a clean SPA with Claude Code; Tailwind keeps styling
+        Why: fastest path to a clean SPA; Tailwind keeps styling
         velocity high; streaming UI is straightforward with fetch + ReadableStream
         or EventSource.
 
     Backend:            Node.js serverless functions
-        Why: same language as frontend (one mental context), trivial GitHub +
-        Gemini SDK usage, first-class on every free host. Could equally be Python;
-        Node chosen for single-language simplicity.
+        Why: same language as frontend (one mental context), trivial GitHub and
+        model calls over plain fetch (no SDK), first-class on every free host.
+        Could equally be Python; Node chosen for single-language simplicity.
 
-    Hosting:            Vercel or Azure Static Web Apps (free tier)
-        Why: both give static frontend + serverless functions on one free deploy,
-        instant public URL, auto HTTPS. For "Microsoft Build" optics, Azure
-        Static Web Apps is the on-theme choice and is genuinely free for this
-        scale; Vercel is the fallback if Azure setup eats time. Pick ONE on day 1
-        and don't relitigate.
+    Hosting:            Vercel (free tier)
+        Why: static frontend + serverless functions on one free deploy, instant
+        public URL, auto HTTPS. Vercel was chosen for fastest setup; the /api
+        functions deploy as serverless functions and the SPA serves from dist/.
 
     Repo data:          GitHub REST API
         Why: free, well-documented, no SDK required (plain fetch). Unauthenticated
@@ -728,8 +728,8 @@ in a live demo. Each line is itself a small ADR.
 11.  DATA MODELS AND SCHEMAS
 ================================================================================
 
-These are the canonical shapes passed between layers. Define them once; Claude
-Code should generate types from these.
+These are the canonical shapes passed between layers. Define them once and
+generate the types from these.
 
 11.1  RepoProfile (built during ingestion, the heart of grounding)
 
@@ -955,8 +955,9 @@ downstream is easy.
 14.1  Principles
     - Always pass the RepoProfile as structured context, not raw concatenated
       files. Structure improves inference quality and token efficiency.
-    - Demand JSON output via the model's structured-output / JSON mode for ADRs
-      and PR review. Free text only for chat and onboarding (Markdown).
+    - Demand JSON output via prompt instruction plus tolerant extraction
+      (extractJson) for ADRs and PR review; the JSON array shape rules out native
+      json_object mode. Free text only for chat and onboarding (Markdown).
     - Every prompt includes the grounding instruction: cite evidence, label
       confidence, never invent reasoning the code doesn't support.
 
@@ -1032,7 +1033,9 @@ downstream is easy.
 
 14.6  Token budgeting
     - Flash gives a very large context window; we still budget defensively:
-      target < 250k tokens of input for analyze, far less for ask.
+      target ~40k tokens of input for analyze (TOKEN_BUDGET in ingest.ts), far
+      less for ask. Per-file content is capped (~8k chars) and signal files are
+      limited (~20) so free tiers stay within rate limits.
     - The RepoProfile is the compression layer: tree + parsed deps + truncated
       signal files is dramatically smaller than the whole repo, yet carries the
       decision signal.
@@ -1183,7 +1186,7 @@ downstream is easy.
 19.  THE 5-DAY BUILD PLAN (HOUR BY HOUR)
 ================================================================================
 
-Assumes ~8 focused hours/day with Claude Code. Front-load the risky, unfamiliar
+Assumes ~8 focused hours/day. Front-load the risky, unfamiliar
 parts (GitHub ingestion, streaming) and protect demo day.
 
 DAY 1 — Foundations + ingestion (the riskiest part)
@@ -1197,8 +1200,8 @@ DAY 1 — Foundations + ingestion (the riskiest part)
     - Exit criteria: hitting /api/analyze returns a correct RepoProfile JSON.
 
 DAY 2 — Feature A (ADR generation) end to end
-    - Wire Gemini (key in env), JSON mode, ADR prompt, schema validation +
-      repair retry.
+    - Wire the model (key in env), prompt-instructed JSON, ADR prompt, schema
+      validation + repair retry.
     - Frontend: input zone, pipeline stepper, ADR cards with confidence badges
       and evidence section.
     - Streaming stage events for the live-pipeline feel.
@@ -1312,7 +1315,8 @@ interactive proof → close.
 
     - Single repo, single deploy: static frontend + serverless functions on the
       chosen free host.
-    - Environment variables: GEMINI_API_KEY (server only). No client-exposed keys.
+    - Environment variables (server only, never client-exposed): LLM_API_KEY,
+      LLM_BASE_URL, LLM_MODEL, and GITHUB_TOKEN (raises GitHub limits server-side).
     - CI: host's built-in git deploy (push to main → deploy). No custom pipeline
       needed.
     - Custom domain optional; the host's free URL is fine for judging.
@@ -1372,8 +1376,9 @@ interactive proof → close.
         5 is frozen for demo prep, not building.
 
     RISK: Model output unreliable / malformed.
-        MITIGATION: JSON mode + schema validation + one repair retry + graceful
-        degradation to a readable error, never a crash.
+        MITIGATION: prompt-instructed JSON + tolerant extraction + schema
+        validation + one repair retry + graceful degradation to a readable
+        error, never a crash.
 
 ================================================================================
 25.  APPENDIX
