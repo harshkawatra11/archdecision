@@ -7,6 +7,15 @@
 Paste a GitHub repo → grounded **Architecture Decision Records**, a codebase you can
 **question in plain English**, and a **one-click onboarding doc** — in ~60 seconds, on any public repo.
 
+<br/>
+
+## ▶ Try it now — no setup, no login
+
+# **[archdecision.vercel.app](https://archdecision.vercel.app)**
+
+Just open the link, paste a repo like `pallets/flask`, and hit **Analyze**.
+Everything below is *only* for running it yourself.
+
 </div>
 
 ---
@@ -54,10 +63,10 @@ All five features are implemented and live in the app.
    budget, and parse dependency manifests.
 2. **Profile** — assemble a compact, structured `RepoProfile` (tree + parsed deps + truncated
    signal files). This is the grounding/compression layer fed to the model — never the raw repo.
-3. **Infer** — Gemini reads the profile and returns structured ADRs (JSON mode + schema
+3. **Infer** — the model reads the profile and returns structured ADRs (JSON + schema
    validation + one repair retry). Ask & Onboarding reuse the cached profile.
 
-The Gemini key lives **only** in a server-side env var and never reaches the browser. Repo
+The model API key lives **only** in a server-side env var and never reaches the browser. Repo
 content is treated as untrusted **data** to analyze, not instructions to follow.
 
 ## Tech stack
@@ -65,41 +74,91 @@ content is treated as untrusted **data** to analyze, not instructions to follow.
 - **Frontend** — React + Vite + TypeScript + Tailwind, with GSAP (intro loader) and
   Framer Motion (transitions). `react-markdown` renders the artifacts.
 - **Backend** — Vercel serverless functions (Node + TypeScript) under [`/api`](./api), streamed via SSE.
-- **LLM** — Gemini 2.5 Flash (free tier, 1M-token context, native JSON mode) behind a thin,
-  swappable interface ([`api/_lib/llm.ts`](./api/_lib/llm.ts)).
+- **LLM** — Gemini 2.5 Flash behind a thin, **swappable** OpenAI-compatible interface
+  ([`api/_lib/llm.ts`](./api/_lib/llm.ts)) — point it at Groq, OpenRouter, or GitHub Models by changing env vars.
 - **Data** — GitHub REST API (plain `fetch`). No database, no auth, no paid services.
 
-## Getting started
+---
+
+## Run it locally
+
+> **You don't need to do any of this to evaluate the project** — the
+> [live version](https://archdecision.vercel.app) is fully functional. These steps are for
+> running your own copy.
 
 ### Prerequisites
 
-- Node.js 20.12+ (Node 24 recommended)
-- A free Google Gemini API key — <https://aistudio.google.com/apikey>
+- **Node.js 20.12+** (Node 24 recommended) — check with `node -v`
+- A **free Google Gemini API key** — get one in 30 seconds at <https://aistudio.google.com/apikey>
 
-### Run locally
+### 1. Get the code
+
+**Option A — clone with Git:**
 
 ```bash
 git clone https://github.com/harshkawatra11/archdecision.git
 cd archdecision
-npm install
-
-cp .env.example .env        # then set GEMINI_API_KEY in .env
-
-npm run dev                 # web on :5173, API on :3001 (Vite proxies /api)
 ```
 
-Open <http://localhost:5173>. The dev server runs the same handlers that deploy to Vercel as
-serverless functions, with Vite proxying `/api` to them.
+**Option B — download the ZIP:**
 
-> Without a `GEMINI_API_KEY`, the UI still loads and GitHub ingestion works; analysis returns a
-> friendly "engine not configured" message instead of crashing.
+Click **Code → Download ZIP** on the GitHub page, unzip it, then open a terminal in the
+unzipped folder:
+
+```bash
+cd path/to/archdecision   # the folder you unzipped
+```
+
+### 2. Install dependencies
+
+```bash
+npm install
+```
+
+### 3. Add your API key
+
+Copy the example env file and open it:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` and paste your Gemini key into `LLM_API_KEY`:
+
+```dotenv
+# Paste your Gemini key from https://aistudio.google.com/apikey
+LLM_API_KEY=your_gemini_key_here
+
+# Already set for Gemini — leave as-is
+LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+LLM_MODEL=gemini-2.5-flash
+
+# Optional: a GitHub token raises the API limit from 60/hr to 5000/hr.
+# No scopes needed for public repos. Create at https://github.com/settings/tokens
+GITHUB_TOKEN=
+```
+
+> **No key?** The app still runs and GitHub ingestion works — analysis just returns a friendly
+> "engine not configured" message instead of generating ADRs. To skip setup entirely, use the
+> [live deployment](https://archdecision.vercel.app).
+
+### 4. Start the app
+
+```bash
+npm run dev
+```
+
+This starts the web app on **http://localhost:5173** and the API on **:3001** (Vite proxies
+`/api` to it). Open <http://localhost:5173> and paste a repo.
+
+You'll know the key was picked up when the API log prints `LLM_API_KEY detected ✓`.
 
 ### GitHub rate limits
 
 Unauthenticated GitHub allows 60 requests/hour — fine for a few analyses. Hitting the limit (or
-analyzing a private repo)? Expand **"Add a token"** in the UI and paste a
-[personal access token](https://github.com/settings/tokens). It's used **only for that request**
-— never logged, never stored.
+analyzing a private repo)? Either set `GITHUB_TOKEN` in `.env`, or expand **"Add a token"** in
+the UI and paste a [personal access token](https://github.com/settings/tokens). A token pasted in
+the UI is used **only for that request** — never logged, never stored.
 
 ### Scripts
 
@@ -110,12 +169,18 @@ analyzing a private repo)? Expand **"Add a token"** in the UI and paste a
 | `npm run typecheck` | Type-check without emitting. |
 | `npm run preview` | Preview the production build. |
 
-## Deploy to Vercel
+---
 
-1. Push this repo to GitHub.
+## Deploy your own to Vercel
+
+1. Push this repo to your GitHub.
 2. Import it on [Vercel](https://vercel.com/new) — the framework preset (Vite) and
    [`vercel.json`](./vercel.json) are already configured.
-3. Add the environment variable **`GEMINI_API_KEY`** in Project Settings → Environment Variables.
+3. Add these environment variables in Project Settings → Environment Variables:
+   - `LLM_API_KEY` — your Gemini key
+   - `LLM_BASE_URL` — `https://generativelanguage.googleapis.com/v1beta/openai`
+   - `LLM_MODEL` — `gemini-2.5-flash`
+   - `GITHUB_TOKEN` — *(optional)* a GitHub PAT to raise rate limits
 4. Deploy. The `/api/*` files become serverless functions automatically; the SPA is served from `dist/`.
 
 Verify with `GET /api/health` → `{ "ok": true, ... }`.
@@ -153,3 +218,4 @@ MIT — see [LICENSE](./LICENSE).
 <div align="center">
 <sub>Built for the Microsoft Build AI Hackathon 2026 · institutional memory your codebase never had.</sub>
 </div>
+</content>
