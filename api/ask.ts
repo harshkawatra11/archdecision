@@ -7,10 +7,11 @@ import { profileForPrompt } from './_lib/profile.js';
 import { askUserPrompt, ASK_SYSTEM, parseSourcesBlock } from './_lib/prompts.js';
 import { generateStream, humanizeLLMError, isLLMConfigured, LLMConfigError } from './_lib/llm.js';
 import { cacheProfile, getCached } from './_lib/cache.js';
-import type { AskRequest, RepoProfile } from './_lib/schema.js';
+import type { ADR, AskRequest, RepoProfile } from './_lib/schema.js';
 
-const RETRIEVAL_PER_FILE_CAP = 6000;
-const MAX_EXTRA_FETCH = 3;
+const RETRIEVAL_PER_FILE_CAP = 12000;
+const MAX_EXTRA_FETCH = 10;
+const MAX_RETRIEVED = 18;
 
 export default async function handler(req: Req, res: Res) {
   if (req.method !== 'POST') return sendError(res, { status: 405, message: 'Method not allowed.' });
@@ -28,12 +29,15 @@ export default async function handler(req: Req, res: Res) {
     });
   }
 
-  // Reuse the cached profile; rebuild on cold function (acceptable per PRD §12.6).
-  let profile: RepoProfile | undefined = getCached(ref.owner, ref.repo, body.sha || '')?.profile;
+  // Reuse the cached profile + ADRs; rebuild on cold function (acceptable per PRD §12.6).
+  const cached = getCached(ref.owner, ref.repo, body.sha || '');
+  let profile: RepoProfile | undefined = cached?.profile;
+  // The generated ADRs are the most direct source for "why" questions; reuse them when present.
+  const adrs: ADR[] = body.adrs?.length ? body.adrs : cached?.adrs || [];
   try {
     if (!profile) {
       profile = await buildRepoProfile(ref, body.pat);
-      cacheProfile(profile);
+      cacheProfile(profile, adrs);
     }
   } catch (e) {
     return jsonError(res, e);
@@ -42,7 +46,7 @@ export default async function handler(req: Req, res: Res) {
   openSSE(res);
   try {
     const retrieved = await retrieve(profile, body.question, body.pat);
-    const user = askUserPrompt(profileForPrompt(profile), retrieved, body.history || [], body.question);
+    const user = askUserPrompt(profileForPrompt(profile), retrieved, body.history || [], body.question, adrs);
 
     let full = '';
     let inSources = false;
@@ -84,15 +88,22 @@ async function retrieve(
   if (profile.readme) have.set('README', profile.readme.slice(0, RETRIEVAL_PER_FILE_CAP));
   for (const f of profile.signalFiles) have.set(f.path, f.content.slice(0, RETRIEVAL_PER_FILE_CAP));
 
-  const score = (path: string): number => {
+  // Path matches are the strongest signal; content matches let us find files whose name
+  // does not advertise what they do (e.g. a question about "rate limiting").
+  const pathScore = (path: string): number => {
     const p = path.toLowerCase();
     return keywords.reduce((s, k) => s + (p.includes(k) ? 2 : 0), 0);
   };
+  const contentScore = (content: string): number => {
+    const c = content.toLowerCase();
+    // One point per matched keyword (presence, not frequency) so a single long file can't dominate.
+    return keywords.reduce((s, k) => s + (c.includes(k) ? 1 : 0), 0);
+  };
 
-  // Find tree files that match keywords but aren't already captured, and fetch a few.
+  // Find tree files that match keywords by PATH but aren't already captured, and fetch a few.
   const candidates = profile.fileTree
-    .filter((n) => n.type === 'file' && !have.has(n.path) && score(n.path) > 0)
-    .sort((a, b) => score(b.path) - score(a.path) || a.size - b.size)
+    .filter((n) => n.type === 'file' && !have.has(n.path) && pathScore(n.path) > 0)
+    .sort((a, b) => pathScore(b.path) - pathScore(a.path) || a.size - b.size)
     .slice(0, MAX_EXTRA_FETCH);
 
   for (const c of candidates) {
@@ -105,11 +116,16 @@ async function retrieve(
     if (content) have.set(c.path, content.slice(0, RETRIEVAL_PER_FILE_CAP));
   }
 
-  // Rank captured files by relevance; cap the set fed to the model.
+  // Rank every captured file by path + content relevance; cap the set fed to the model.
+  // README keeps a small floor so it is available for general questions.
   return [...have.entries()]
-    .map(([path, content]) => ({ path, content, s: path === 'README' ? 1 : score(path) }))
+    .map(([path, content]) => ({
+      path,
+      content,
+      s: (path === 'README' ? 1 : pathScore(path)) + contentScore(content),
+    }))
     .sort((a, b) => b.s - a.s)
-    .slice(0, 12)
+    .slice(0, MAX_RETRIEVED)
     .map(({ path, content }) => ({ path, content }));
 }
 

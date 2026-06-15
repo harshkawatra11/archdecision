@@ -70,22 +70,42 @@ async function toError(res: Response): Promise<Error> {
   return new Error(`${res.status} ${res.statusText} ${detail}`.trim());
 }
 
-/** One-shot generation. Returns the full text. */
-export async function generate(opts: GenerateOptions): Promise<string> {
-  const token = getToken();
-  const res = await fetch(`${getBaseUrl()}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(buildBody(opts, false)),
-  });
-  if (!res.ok) {
-    const err = await toError(res);
+// Transient server/rate conditions worth retrying. Free tiers throw 503 "high demand"
+// spikes and 429 rate limits that almost always clear within a second or two.
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
+const MAX_RETRIES = 3;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * POST one chat-completions request, retrying transient failures with exponential
+ * backoff + jitter. Returns the OK Response; throws a descriptive Error otherwise.
+ */
+async function chatRequest(token: string, body: unknown): Promise<Response> {
+  const url = `${getBaseUrl()}/chat/completions`;
+  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const payload = JSON.stringify(body);
+
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, { method: 'POST', headers, body: payload });
+    if (res.ok) return res;
+
+    const err = await toError(res); // consumes the body so the connection is freed
+    if (attempt < MAX_RETRIES && RETRYABLE_STATUS.has(res.status)) {
+      const wait = Math.round(600 * 2 ** attempt + Math.random() * 300);
+      console.error(`[llm] ${res.status} (attempt ${attempt + 1}/${MAX_RETRIES + 1}); retrying in ${wait}ms`);
+      await sleep(wait);
+      continue;
+    }
     console.error('[llm] generate error:', err.message.slice(0, 300));
     throw err;
   }
+}
+
+/** One-shot generation. Returns the full text. */
+export async function generate(opts: GenerateOptions): Promise<string> {
+  const token = getToken();
+  const res = await chatRequest(token, buildBody(opts, false));
   const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
   return data.choices?.[0]?.message?.content ?? '';
 }
@@ -93,15 +113,7 @@ export async function generate(opts: GenerateOptions): Promise<string> {
 /** Streaming generation. Yields text deltas. */
 export async function* generateStream(opts: GenerateOptions): AsyncGenerator<string> {
   const token = getToken();
-  const res = await fetch(`${getBaseUrl()}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(buildBody(opts, true)),
-  });
-  if (!res.ok) throw await toError(res);
+  const res = await chatRequest(token, buildBody(opts, true));
   if (!res.body) return;
 
   const reader = res.body.getReader();

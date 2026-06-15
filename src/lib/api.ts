@@ -96,7 +96,7 @@ export interface AskHandlers {
 }
 
 export async function ask(
-  body: { repoUrl: string; sha: string; question: string; history: { role: 'user' | 'assistant'; content: string }[]; pat?: string },
+  body: { repoUrl: string; sha: string; question: string; history: { role: 'user' | 'assistant'; content: string }[]; adrs?: unknown[]; pat?: string },
   h: AskHandlers,
 ): Promise<void> {
   try {

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1280, initial-scale=1" />
+<title>ArchDecision - Prototype Submission</title>
+<style>
+  :root {
+    --green:  #0e2a1e;
+    --green2: #0a2017;
+    --card:   #143628;
+    --card2:  #113023;
+    --cream:  #f2ede1;
+    --sage:   #a7bcae;
+    --faint:  #6f8a7c;
+    --gold:   #e3b24a;
+    --gold-d: #caa043;
+    --line:   rgba(242,237,225,0.13);
+    --line2:  rgba(242,237,225,0.26);
+    --gline:  rgba(227,178,74,0.42);
+    --serif: "Hoefler Text", "Baskerville", "Baskerville Old Face", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+    --sans: "Helvetica Neue", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    background: #071a12; color: var(--cream); font-family: var(--sans);
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    -webkit-font-smoothing: antialiased;
+  }
+  body { display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 24px 0; }
+
+  .slide {
+    position: relative; width: 1280px; height: 720px; overflow: hidden;
+    background: linear-gradient(176deg, var(--green) 0%, var(--green2) 100%);
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    page-break-after: always; break-after: page;
+  }
+  .slide:last-child { page-break-after: auto; break-after: auto; }
+
+  .tnum { font-variant-numeric: tabular-nums lining-nums; }
+  .serif { font-family: var(--serif); }
+  .gold { color: var(--gold); }
+  .sage { color: var(--sage); }
+
+  /* huge ghost folio */
+  .ghost { position: absolute; z-index: 1; right: 50px; top: 6px; font-family: var(--serif); font-size: 250px; line-height: 1; color: var(--cream); opacity: 0.05; user-select: none; }
+
+  .sheet { position: relative; z-index: 2; height: 100%; padding: 46px 60px 42px; display: flex; flex-direction: column; }
+
+  .runhead { display: flex; align-items: center; gap: 10px; padding-bottom: 13px; border-bottom: 1px solid var(--gline); }
+  .runhead .mk { width: 22px; height: 22px; }
+  .runhead .nm { font-weight: 700; font-size: 13px; letter-spacing: 0.04em; }
+  .runhead .nm s { color: var(--faint); text-decoration: none; }
+  .runhead .ix { margin-left: auto; font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sage); }
+  .runhead .ix b { color: var(--gold); font-weight: 600; }
+
+  .kick { font-family: var(--mono); font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--gold); }
+  h1 { font-family: var(--serif); font-weight: 600; font-size: 47px; line-height: 1.04; letter-spacing: -0.01em; color: var(--cream); }
+  h1 em { font-style: italic; color: var(--gold); }
+  .body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+  .lede { font-family: var(--serif); font-size: 24px; line-height: 1.42; color: #e7e1d3; }
+  .lede em { font-style: italic; color: var(--gold); }
+  .para { font-size: 13.5px; line-height: 1.64; color: var(--sage); }
+
+  .colh { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); padding-bottom: 9px; border-bottom: 1px solid var(--line2); margin-bottom: 13px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; }
+
+  /* ============ COVER ============ */
+  .cover { position: relative; z-index: 2; height: 100%; padding: 38px; }
+  .cover .inset { height: 100%; border: 1px solid var(--gline); padding: 36px 44px; display: flex; flex-direction: column; }
+  .cover .ct { display: flex; align-items: center; gap: 11px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+  .cover .ct .mk { width: 26px; height: 26px; }
+  .cover .ct .nm { font-weight: 700; font-size: 15px; letter-spacing: 0.03em; }
+  .cover .ct .rt { margin-left: auto; font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--sage); }
+  .cover .cm { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .cover h2 { font-family: var(--serif); font-weight: 600; font-size: 110px; line-height: 0.9; letter-spacing: -0.025em; }
+  .cover .rule { display: flex; align-items: center; gap: 14px; margin: 28px 0 24px; }
+  .cover .rule .l { width: 70px; height: 2px; background: var(--gold); }
+  .cover .rule .dia { color: var(--gold); font-size: 11px; }
+  .cover .tg { font-family: var(--serif); font-style: italic; font-size: 30px; color: var(--gold); letter-spacing: -0.01em; }
+  .cover .sb { margin-top: 18px; max-width: 580px; font-size: 15.5px; line-height: 1.62; color: var(--sage); }
+  .cover .cf { display: grid; grid-template-columns: 1fr 1fr 180px; column-gap: 36px; padding-top: 20px; border-top: 1px solid var(--line); }
+  .cover .cf .lb { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--faint); margin-bottom: 7px; }
+  .cover .cf .vv { font-size: 14px; font-weight: 600; }
+  .cover .cf .vv.g { color: var(--gold); line-height: 1.3; }
+
+  /* ============ feature ledger ============ */
+  .feat { list-style: none; }
+  .feat li { display: flex; gap: 14px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .feat li:last-child { border-bottom: none; }
+  .feat .n { font-family: var(--mono); font-size: 11px; color: var(--gold); padding-top: 3px; width: 18px; flex: 0 0 auto; }
+  .feat .t { font-size: 13.5px; line-height: 1.44; }
+  .feat .t b { font-weight: 700; color: var(--cream); }
+  .feat .t span { color: var(--sage); }
+
+  .kl { font-size: 13px; line-height: 1.5; margin-bottom: 9px; }
+  .kl b { font-weight: 700; color: var(--cream); }
+  .kl span { color: var(--sage); }
+  .dl { list-style: none; margin-top: 3px; }
+  .dl li { position: relative; padding-left: 15px; font-size: 12px; line-height: 1.45; color: var(--sage); margin-bottom: 7px; }
+  .dl li::before { content: ""; position: absolute; left: 0; top: 5px; width: 6px; height: 6px; background: var(--gold); transform: rotate(45deg); }
+  .dl li b { color: #d6ddd4; font-weight: 700; }
+
+  .mline { display: grid; grid-template-columns: repeat(4,1fr); border-top: 1px solid var(--gline); margin-top: 16px; }
+  .mline .m { padding: 14px 18px 4px; border-right: 1px solid var(--line); }
+  .mline .m:last-child { border-right: none; }
+  .mline .mv { font-family: var(--serif); font-weight: 600; font-size: 31px; color: var(--gold); line-height: 1; letter-spacing: -0.01em; }
+  .mline .ml { font-size: 11px; color: var(--sage); margin-top: 8px; line-height: 1.35; }
+
+  .ftn { margin-top: 14px; font-size: 12.5px; line-height: 1.5; color: var(--sage); }
+  .ftn b { color: #d6ddd4; font-weight: 700; }
+
+  /* ============ methodology ============ */
+  .pipe { display: flex; border-top: 1px solid var(--gline); border-bottom: 1px solid var(--line); }
+  .pipe .p { flex: 1; padding: 13px 16px; border-right: 1px solid var(--line); }
+  .pipe .p:last-child { border-right: none; padding-right: 0; }
+  .pipe .p:first-child { padding-left: 0; }
+  .pipe .pn { font-weight: 700; font-size: 14px; letter-spacing: -0.01em; }
+  .pipe .pn .a { color: var(--gold); }
+  .pipe .ps { font-family: var(--mono); font-size: 10px; color: var(--sage); margin-top: 5px; }
+
+  .mgrid { display: grid; grid-template-columns: 1fr 0.9fr; gap: 36px; margin-top: 22px; flex: 1; min-height: 0; }
+  .steps { display: flex; gap: 24px; margin-bottom: 20px; }
+  .steps .si { font-family: var(--mono); font-size: 10px; color: var(--gold); }
+  .steps .sn { font-family: var(--serif); font-weight: 600; font-size: 17px; margin-top: 2px; }
+  .steps .sd { font-size: 11px; color: var(--sage); margin-top: 2px; }
+
+  .unit { }
+  .unit .uh { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+  .cells { display: grid; grid-template-columns: repeat(20, 1fr); gap: 4px; }
+  .cells i { display: block; aspect-ratio: 1; border: 1px solid var(--line2); border-radius: 2px; }
+  .cells i.on { background: var(--gold); border-color: var(--gold); }
+  .unit .ux { display: flex; justify-content: space-between; align-items: baseline; margin-top: 12px; }
+  .unit .ux .uk { font-size: 12px; color: var(--sage); }
+  .unit .ux .uv { font-family: var(--serif); font-size: 15px; color: var(--cream); }
+  .unit .ufig { font-family: var(--mono); font-size: 10px; color: var(--faint); margin-top: 9px; line-height: 1.5; }
+  .unit .ufig b { color: var(--gold); }
+
+  .frame { border: 1px solid var(--line2); overflow: hidden; background: var(--card); box-shadow: 0 16px 40px rgba(0,0,0,0.4); align-self: center; }
+  .frame img { width: 100%; display: block; }
+  .frame .fc { font-family: var(--mono); font-size: 10px; color: var(--sage); padding: 8px 12px; border-top: 1px solid var(--line); }
+
+  /* ============ prototype ============ */
+  .proto { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 36px; flex: 1; min-height: 0; align-items: center; }
+  .lks { border-top: 1px solid var(--gline); }
+  .lkr { padding: 16px 0; border-bottom: 1px solid var(--line); }
+  .lkr:last-child { border-bottom: none; }
+  .lkr .lt { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); margin-bottom: 7px; }
+  .lkr .lu { font-family: var(--serif); font-weight: 600; font-size: 23px; letter-spacing: -0.01em; color: var(--gold); word-break: break-all; }
+  .lkr .lu.sm { font-size: 17px; color: var(--cream); }
+  .lkr .lu.ph { color: var(--sage); }
+  .lkr .lv { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--sage); margin-top: 8px; }
+  .lkr .dot { width: 7px; height: 7px; background: var(--gold); transform: rotate(45deg); }
+
+  .win { border: 1px solid var(--line2); overflow: hidden; box-shadow: 0 22px 50px rgba(0,0,0,0.5); }
+  .win .wb { display: flex; align-items: center; gap: 6px; padding: 9px 13px; background: #0c241a; border-bottom: 1px solid var(--line); }
+  .win .wb .d { width: 9px; height: 9px; border-radius: 50%; background: rgba(242,237,225,0.18); }
+  .win .wb .ad { margin-left: 9px; font-family: var(--mono); font-size: 11px; color: var(--sage); }
+  .win img { width: 100%; display: block; }
+
+  /* ============ attachments ============ */
+  .grid { display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(2,1fr); gap: 16px; flex: 1; min-height: 0; }
+  .gc { border: 1px solid var(--line2); overflow: hidden; display: flex; flex-direction: column; background: var(--card); }
+  .gc .gi { flex: 1; min-height: 0; overflow: hidden; background: #06140d; }
+  .gc .gi img { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; }
+  .gc .cap { padding: 8px 12px; border-top: 1px solid var(--line); display: flex; align-items: baseline; gap: 8px; }
+  .gc .cap .lt { font-family: var(--mono); font-size: 10px; color: var(--gold); }
+  .gc .cap b { font-size: 12.5px; font-weight: 700; }
+  .gc .cap span { font-family: var(--mono); font-size: 9.5px; color: var(--sage); margin-left: auto; }
+  .afoot { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--gline); display: flex; gap: 30px; font-family: var(--mono); font-size: 12px; color: var(--sage); }
+  .afoot b { color: var(--gold); font-weight: 700; }
+
+  @page { size: 1280px 720px; margin: 0; }
+  @media print { body { gap: 0; padding: 0; display: block; } .slide { margin: 0; box-shadow: none; } }
+</style>
+</head>
+<body>
+
+<!-- ============ COVER ============ -->
+<section class="slide">
+  <div class="cover">
+    <div class="inset">
+      <div class="ct">
+        <svg class="mk" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="6" fill="#0a2017"/><path d="M9 22 L16 8 L23 22" fill="none" stroke="#e3b24a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.2 16 H19.8" stroke="#e3b24a" stroke-width="2.5" stroke-linecap="round"/><circle cx="16" cy="8" r="1.9" fill="#e3b24a"/></svg>
+        <span class="nm">ArchDecision</span>
+        <span class="rt">Prototype Submission &nbsp;/&nbsp; 2026</span>
+      </div>
+      <div class="cm">
+        <h2>ArchDecision</h2>
+        <div class="rule"><span class="l"></span><span class="dia">&#9670;</span></div>
+        <div class="tg">Why your codebase is the way it is.</div>
+        <div class="sb">Paste a GitHub repo. Get grounded Architecture Decision Records, a codebase you can question in plain English, and a one-click onboarding doc.</div>
+      </div>
+      <div class="cf">
+        <div><div class="lb">Team</div><div class="vv">Harsh Kawatra &nbsp;&middot;&nbsp; Gursimran Kaur</div></div>
+        <div><div class="lb">Track</div><div class="vv g">AI-Powered Production Function: Reinventing Work</div></div>
+        <div><div class="lb">Status</div><div class="vv">Live on Vercel</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 01 TEAM ============ -->
+<section class="slide">
+  <div class="ghost serif">1</div>
+  <div class="sheet">
+    <div class="runhead"><svg class="mk" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="6" fill="#0a2017"/><path d="M9 22 L16 8 L23 22" fill="none" stroke="#e3b24a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.2 16 H19.8" stroke="#e3b24a" stroke-width="2.5" stroke-linecap="round"/><circle cx="16" cy="8" r="1.9" fill="#e3b24a"/></svg><span class="nm">ArchDecision <s>/ submission</s></span><span class="ix">Prototype Submission &nbsp;&middot;&nbsp; <b>01 / 06</b></span></div>
+    <div class="body">
+      <div class="kick" style="margin:22px 0 12px;">Team &amp; Theme</div>
+      <h1>Who built it, <em>where it fits.</em></h1>
+      <div class="two" style="margin-top:30px;">
+        <div>
+          <div class="colh">Team</div>
+          <ul class="feat">
+            <li><div class="n">01</div><div class="t"><b>Harsh Kawatra</b><br><span>Build, deployment, full-stack</span></div></li>
+            <li><div class="n">02</div><div class="t"><b>Gursimran Kaur</b><br><span>Product, design, content</span></div></li>
+          </ul>
+        </div>
+        <div>
+          <div class="colh">Theme</div>
+          <div class="lede" style="font-size:21px;">AI-Powered Production Function: <em>Reinventing Work.</em></div>
+          <div class="ftn" style="margin-top:13px;">ArchDecision targets the first weeks on a new codebase, the time engineers spend rediscovering context instead of shipping. It turns reading a repo into a measured, repeatable step.</div>
+        </div>
+      </div>
+      <div class="lede" style="margin-top:32px; padding-top:22px; border-top:1px solid var(--line); font-size:20px;">In one line: <em>institutional memory your codebase never had</em>, recovered from the code itself.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 PROBLEM ============ -->
+<section class="slide">
+  <div class="ghost serif">2</div>
+  <div class="sheet">
+    <div class="runhead"><svg class="mk" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="6" fill="#0a2017"/><path d="M9 22 L16 8 L23 22" fill="none" stroke="#e3b24a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.2 16 H19.8" stroke="#e3b24a" stroke-width="2.5" stroke-linecap="round"/><circle cx="16" cy="8" r="1.9" fill="#e3b24a"/></svg><span class="nm">ArchDecision <s>/ submission</s></span><span class="ix">Prototype Submission &nbsp;&middot;&nbsp; <b>02 / 06</b></span></div>
+    <div class="body">
+      <div class="kick" style="margin:22px 0 12px;">Problem Statement</div>
+      <h1>The reasoning behind a codebase <em>evaporates.</em></h1>
+      <div class="lede" style="margin-top:24px;">The engineer who chose the datastore leaves. The chat thread that explained it is gone. New engineers spend weeks rediscovering context, and teams repeat mistakes they already solved.</div>
+      <div class="two" style="margin-top:26px; padding-top:22px; border-top:1px solid var(--line);">
+        <div><div class="colh">Why it persists</div><p class="para">Architecture Decision Records are the known best practice for capturing this. Almost nobody writes them, because doing it by hand is tedious work with a delayed payoff. The context keeps disappearing, one departure at a time.</p></div>
+        <div><div class="colh">The opening</div><p class="para">One source of truth never leaves: the code. Dependencies, file structure, configs, and entry points still hold the evidence for why the system looks the way it does. That evidence is just never read as a decision record.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 03 SOLUTION ============ -->
+<section class="slide">
+  <div class="ghost serif">3</div>
+  <div class="sheet">
+    <div class="runhead"><svg class="mk" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="6" fill="#0a2017"/><path d="M9 22 L16 8 L23 22" fill="none" stroke="#e3b24a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.2 16 H19.8" stroke="#e3b24a" stroke-width="2.5" stroke-linecap="round"/><circle cx="16" cy="8" r="1.9" fill="#e3b24a"/></svg><span class="nm">ArchDecision <s>/ submission</s></span><span class="ix">Prototype Submission &nbsp;&middot;&nbsp; <b>03 / 06</b></span></div>
+    <div class="body">
+      <div class="kick" style="margin:18px 0 11px;">Solution</div>
+      <h1 style="font-size:34px;">Recover the decisions from the code, <em>write the record itself.</em></h1>
+      <div class="two" style="margin-top:20px;">
+        <div>
+          <div class="colh">What it does</div>
+          <ul class="feat">
+            <li><div class="n">01</div><div class="t"><b>ADR generator.</b> <span>5 to 8 records in the Nygard format, each with the evidence it was inferred from.</span></div></li>
+            <li><div class="n">02</div><div class="t"><b>Ask your codebase.</b> <span>Plain-English answers scoped to the repo, with file citations.</span></div></li>
+            <li><div class="n">03</div><div class="t"><b>Onboarding doc.</b> <span>A day-one guide to how the codebase works, ready to commit.</span></div></li>
+            <li><div class="n">04</div><div class="t"><b>PR architectural review.</b> <span>Checks a pull request against the generated ADRs.</span></div></li>
+            <li><div class="n">05</div><div class="t"><b>Tech-debt drift map.</b> <span>Where the code diverged from the decisions it was built on.</span></div></li>
+          </ul>
+        </div>
+        <div>
+          <div class="colh">How we built it</div>
+          <div class="kl"><b>Frontend.</b> <span>React, Vite, TypeScript, Tailwind.</span></div>
+          <div class="kl"><b>Backend.</b> <span>Vercel serverless functions in Node and TypeScript, streamed over SSE.</span></div>
+          <div class="kl"><b>Model.</b> <span>Gemini 2.5 Flash behind a swappable OpenAI-compatible interface. No database, no auth, no paid services.</span></div>
+          <div class="colh" style="margin-top:13px;">Decision points</div>
+          <ul class="dl">
+            <li><b>Grounding over generation.</b> Never the raw repo, only a compact RepoProfile within a token budget.</li>
+            <li><b>Repo content is data, not instructions.</b> Analyzed, never followed.</li>
+            <li><b>Swappable model layer.</b> Groq, OpenRouter, or GitHub Models by env vars. Key stays server-side.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="mline tnum">
+        <div class="m"><div class="mv">~60s</div><div class="ml">Time to first context, per analysis (target)</div></div>
+        <div class="m"><div class="mv">5 to 8</div><div class="ml">Decision records produced per repo</div></div>
+        <div class="m"><div class="mv">100%</div><div class="ml">Claims that cite evidence, or stay silent</div></div>
+        <div class="m"><div class="mv">3</div><div class="ml">Confidence levels labeled on every ADR</div></div>
+      </div>
+      <div class="ftn"><b>Scalability and usability.</b> Stateless serverless functions scale on demand, the profile is cached so Ask and Onboarding reuse it, setup is zero (paste a URL, no login), and every artifact downloads as committable Markdown.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 04 METHODOLOGY ============ -->
+<section class="slide">
+  <div class="ghost serif">4</div>
+  <div class="sheet">
+    <div class="runhead"><svg class="mk" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="6" fill="#0a2017"/><path d="M9 22 L16 8 L23 22" fill="none" stroke="#e3b24a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.2 16 H19.8" stroke="#e3b24a" stroke-width="2.5" stroke-linecap="round"/><circle cx="16" cy="8" r="1.9" fill="#e3b24a"/></svg><span class="nm">ArchDecision <s>/ submission</s></span><span class="ix">Prototype Submission &nbsp;&middot;&nbsp; <b>04 / 06</b></span></div>
+    <div class="body">
+      <div class="kick" style="margin:18px 0 11px;">Methodology</div>
+      <h1 style="font-size:34px;">Architecture, pipeline, and <em>how the input shrinks.</em></h1>
+      <div class="pipe" style="margin-top:20px;">
+        <div class="p"><div class="pn">Browser SPA <span class="a">&rarr;</span></div><div class="ps">React / Vite, HTTPS + SSE</div></div>
+        <div class="p"><div class="pn">Serverless API <span class="a">&rarr;</span></div><div class="ps">Vercel functions</div></div>
+        <div class="p"><div class="pn">GitHub REST <span class="a">&rarr;</span></div><div class="ps">repo tree and files</div></div>
+        <div class="p"><div class="pn">Gemini 2.5 Flash</div><div class="ps">structured ADRs</div></div>
+      </div>
+      <div class="mgrid">
+        <div>
+          <div class="steps">
+            <div><div class="si">01</div><div class="sn">Ingest</div><div class="sd">Tree, manifests, signals.</div></div>
+            <div><div class="si">02</div><div class="sn">Profile</div><div class="sd">Grounded context.</div></div>
+            <div><div class="si">03</div><div class="sn">Infer</div><div class="sd">Decisions with evidence.</div></div>
+          </div>
+          <div class="unit tnum">
+            <div class="uh">Distillation / expressjs-express</div>
+            <div class="cells">
+              <i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+            <div class="ux"><span class="uk">Signal files as a share of the repo</span><span class="uv">~9%</span></div>
+            <div class="ufig">213 files <b>&rarr;</b> ~20 signal files <b>&rarr;</b> 1 RepoProfile <b>&rarr;</b> 8 decision records. Source: live analysis and MAX_SIGNAL_FILES in api/_lib/ingest.ts.</div>
+          </div>
+        </div>
+        <div class="frame">
+          <img src="2.png" alt="ArchDecision analysis pipeline running" />
+          <div class="fc">Live pipeline: fetch, structure, signals, infer, generate.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 05 PROTOTYPE ============ -->
+<section class="slide">
+  <div class="ghost serif">5</div>
+  <div class="sheet">
+    <div class="runhead"><svg class="mk" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="6" fill="#0a2017"/><path d="M9 22 L16 8 L23 22" fill="none" stroke="#e3b24a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.2 16 H19.8" stroke="#e3b24a" stroke-width="2.5" stroke-linecap="round"/><circle cx="16" cy="8" r="1.9" fill="#e3b24a"/></svg><span class="nm">ArchDecision <s>/ submission</s></span><span class="ix">Prototype Submission &nbsp;&middot;&nbsp; <b>05 / 06</b></span></div>
+    <div class="body">
+      <div class="kick" style="margin:22px 0 12px;">Working Prototype</div>
+      <h1>Live, deployed, and <em>usable right now.</em></h1>
+      <div class="proto" style="margin-top:24px;">
+        <div class="lks">
+          <div class="lkr"><div class="lt">Live demo</div><div class="lu">archdecision.vercel.app</div><div class="lv"><span class="dot"></span> Deployed on Vercel, health endpoint returns ok.</div></div>
+          <div class="lkr"><div class="lt">Source</div><div class="lu sm">github.com/harshkawatra11/archdecision</div></div>
+          <div class="lkr"><div class="lt">Demo video</div><div class="lu sm ph">[ add link ]</div></div>
+        </div>
+        <div class="win">
+          <div class="wb"><span class="d"></span><span class="d"></span><span class="d"></span><span class="ad">archdecision.vercel.app</span></div>
+          <img src="1.png" alt="ArchDecision landing page" />
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 06 ATTACHMENTS ============ -->
+<section class="slide">
+  <div class="ghost serif">6</div>
+  <div class="sheet">
+    <div class="runhead"><svg class="mk" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="6" fill="#0a2017"/><path d="M9 22 L16 8 L23 22" fill="none" stroke="#e3b24a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.2 16 H19.8" stroke="#e3b24a" stroke-width="2.5" stroke-linecap="round"/><circle cx="16" cy="8" r="1.9" fill="#e3b24a"/></svg><span class="nm">ArchDecision <s>/ submission</s></span><span class="ix">Prototype Submission &nbsp;&middot;&nbsp; <b>06 / 06</b></span></div>
+    <div class="body">
+      <div class="kick" style="margin:18px 0 11px;">Attachments</div>
+      <h1 style="font-size:40px;">Screens from the <em>running app.</em></h1>
+      <div class="grid" style="margin-top:20px;">
+        <div class="gc"><div class="gi"><img src="2.png" alt="Pipeline run"></div><div class="cap"><span class="lt">A</span><b>Pipeline run</b><span>fetch / infer</span></div></div>
+        <div class="gc"><div class="gi"><img src="3.png" alt="Decisions list"></div><div class="cap"><span class="lt">B</span><b>Decisions list</b><span>8 ADRs</span></div></div>
+        <div class="gc"><div class="gi"><img src="4.png" alt="ADR detail"></div><div class="cap"><span class="lt">C</span><b>ADR detail</b><span>evidence</span></div></div>
+        <div class="gc"><div class="gi"><img src="5.png" alt="Ask the codebase"></div><div class="cap"><span class="lt">D</span><b>Ask</b><span>citations</span></div></div>
+        <div class="gc"><div class="gi"><img src="6.png" alt="Onboarding doc"></div><div class="cap"><span class="lt">E</span><b>Onboarding</b><span>committable</span></div></div>
+        <div class="gc"><div class="gi"><img src="7.png" alt="Drift map"></div><div class="cap"><span class="lt">F</span><b>Drift map</b><span>now / intended</span></div></div>
+      </div>
+      <div class="afoot">
+        <span>Live &nbsp; <b>archdecision.vercel.app</b></span>
+        <span>Source &nbsp; <b>github.com/harshkawatra11/archdecision</b></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

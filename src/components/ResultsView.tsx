@@ -229,7 +229,7 @@ export default function ResultsView({ profile, adrs, pat, onboardingDoc, setOnbo
               ))}
             {tab === 'ask' && (
               <PanelFrame blurb="Plain-English questions answered from the repo itself — every answer cites its sources.">
-                <AskPanel profile={profile} pat={pat} />
+                <AskPanel profile={profile} adrs={adrs} pat={pat} />
               </PanelFrame>
             )}
             {tab === 'onboarding' && (

@@ -96,6 +96,7 @@ export interface AskRequest {
   sha: string;
   question: string;
   history: { role: 'user' | 'assistant'; content: string }[];
+  adrs?: ADR[]; // client may pass the generated ADRs so Ask can ground "why" questions in them
   pat?: string;
 }
 

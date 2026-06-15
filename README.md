@@ -36,7 +36,7 @@ one source of truth that never leaves: the code.
 
 | Feature | What you get |
 | --- | --- |
-| **ADR Generator** *(core)* | 5–8 Architecture Decision Records in the Nygard format — context, decision, rationale, alternatives, consequences, and the **evidence** each was inferred from. |
+| **ADR Generator** *(core)* | A grounded set of Architecture Decision Records in the Nygard format, as many as the evidence supports — context, decision, rationale, alternatives, consequences, and the **evidence** each was inferred from. |
 | **Ask Your Codebase** *(core)* | A chat scoped to the repo. Ask *"why Redis here?"* and get a grounded answer **with file citations**, not a generic hallucination. |
 | **Onboarding Doc** *(core)* | The day-one "how this codebase works" guide every team needs and nobody writes. Generated, sectioned, and ready to commit. |
 | **PR Architectural Review** *(stretch)* | Paste a pull request URL — it's checked against the generated ADRs and flags likely architectural violations, each phrased as a question for the reviewer. |

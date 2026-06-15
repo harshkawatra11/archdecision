@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1280, initial-scale=1" />
+<title>ArchDecision - Prototype Submission</title>
+<style>
+  :root {
+    --bg: #060910;
+    --ink: #f3f6fb;
+    --soft: #aab4c5;
+    --faint: #6b7589;
+    --line: rgba(255,255,255,0.10);
+    --line2: rgba(255,255,255,0.16);
+    --glass: rgba(255,255,255,0.035);
+    --glass2: rgba(255,255,255,0.06);
+    --g1: #34d399;
+    --g2: #22d3ee;
+    --grad: linear-gradient(135deg, #34d399 0%, #22d3ee 100%);
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    background: #02040a; color: var(--ink); font-family: var(--sans);
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    -webkit-font-smoothing: antialiased;
+  }
+  body { display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 24px 0; }
+
+  .slide {
+    position: relative; width: 1280px; height: 720px; overflow: hidden;
+    background:
+      radial-gradient(820px 520px at 12% -8%, rgba(52,211,153,0.18), transparent 60%),
+      radial-gradient(760px 520px at 92% 8%, rgba(34,211,238,0.14), transparent 58%),
+      radial-gradient(900px 620px at 78% 116%, rgba(99,102,241,0.16), transparent 60%),
+      linear-gradient(180deg, #070b14 0%, #060910 60%, #04060d 100%);
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    page-break-after: always; break-after: page;
+  }
+  .slide:last-child { page-break-after: auto; break-after: auto; }
+
+  /* fine grid texture */
+  .slide::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
+    background-image: linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+
+  .pad { position: relative; z-index: 2; height: 100%; padding: 50px 60px 46px; display: flex; flex-direction: column; }
+
+  .rh { display: flex; align-items: center; gap: 11px; margin-bottom: 26px; }
+  .rh .mk { width: 30px; height: 30px; }
+  .rh .wm { font-weight: 600; font-size: 15px; letter-spacing: 0.01em; }
+  .rh .wm .s { color: var(--faint); font-weight: 400; }
+  .rh .pg { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--faint); letter-spacing: 0.06em; }
+  .rh .pg b { color: var(--g1); font-weight: 600; }
+
+  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--soft); border: 1px solid var(--line2); border-radius: 999px; padding: 6px 14px; }
+  .pill .d { width: 7px; height: 7px; border-radius: 50%; background: var(--grad); box-shadow: 0 0 10px rgba(52,211,153,0.8); }
+
+  h2.title { font-weight: 300; font-size: 46px; line-height: 1.06; letter-spacing: -0.025em; color: var(--ink); }
+  h2.title b { font-weight: 600; }
+  .gt { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+  .muted { color: var(--soft); }
+  .head { margin-bottom: 24px; }
+  .head .pill { margin-bottom: 16px; }
+  .body { flex: 1; min-height: 0; }
+
+  .lede { font-weight: 300; font-size: 25px; line-height: 1.4; color: #d9dfea; max-width: 940px; letter-spacing: -0.01em; }
+  .lede .gt { font-weight: 500; }
+
+  .glass { background: var(--glass); border: 1px solid var(--line); border-radius: 18px; }
+  .ch { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--g1); margin-bottom: 14px; }
+
+  .cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+
+  .flist { list-style: none; }
+  .flist li { display: flex; gap: 13px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+  .flist li:last-child { border-bottom: none; }
+  .flist .n { font-family: var(--mono); font-size: 12px; color: var(--g2); width: 20px; flex: 0 0 auto; padding-top: 2px; }
+  .flist .t { font-size: 14px; line-height: 1.45; }
+  .flist .t b { font-weight: 600; color: var(--ink); }
+  .flist .t span { color: var(--soft); }
+
+  .kl { font-size: 13px; line-height: 1.5; margin-bottom: 10px; }
+  .kl b { font-weight: 600; color: var(--ink); }
+  .kl span { color: var(--soft); }
+  .dl { list-style: none; margin-top: 4px; }
+  .dl li { position: relative; padding-left: 16px; font-size: 12.5px; line-height: 1.45; color: var(--soft); margin-bottom: 7px; }
+  .dl li::before { content: ""; position: absolute; left: 0; top: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--grad); }
+  .dl li b { color: #ccd3e0; font-weight: 600; }
+
+  .mrow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 18px; }
+  .mc { background: var(--glass); border: 1px solid var(--line); border-radius: 14px; padding: 15px 17px; }
+  .mc .v { font-weight: 300; font-size: 30px; line-height: 1; letter-spacing: -0.02em; }
+  .mc .v .gt { font-weight: 500; }
+  .mc .l { font-size: 11px; color: var(--soft); margin-top: 9px; line-height: 1.35; }
+
+  .note { margin-top: 15px; font-size: 12.5px; line-height: 1.5; color: var(--soft); }
+  .note b { color: #ccd3e0; font-weight: 600; }
+
+  /* cover */
+  .cover { position: relative; z-index: 2; height: 100%; padding: 56px 64px; display: flex; flex-direction: column; }
+  .cover .top { display: flex; align-items: center; gap: 12px; }
+  .cover .top .mk { width: 32px; height: 32px; }
+  .cover .top .wm { font-weight: 600; font-size: 16px; }
+  .cover .top .meta { margin-left: auto; font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--soft); }
+  .cover .mid { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .cover .mid .pill { margin-bottom: 26px; }
+  .cover .mid h1 { font-weight: 200; font-size: 96px; line-height: 0.96; letter-spacing: -0.04em; }
+  .cover .mid h1 b { font-weight: 600; }
+  .cover .mid .tagl { margin-top: 26px; font-weight: 300; font-size: 28px; color: #d9dfea; letter-spacing: -0.01em; }
+  .cover .mid .subl { margin-top: 18px; max-width: 600px; font-size: 16px; line-height: 1.6; color: var(--soft); }
+  .cover .foot { display: flex; gap: 16px; }
+  .cover .foot .fc { flex: 1; background: var(--glass); border: 1px solid var(--line); border-radius: 14px; padding: 16px 20px; }
+  .cover .foot .lbl { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--faint); margin-bottom: 7px; }
+  .cover .foot .val { font-size: 14.5px; font-weight: 500; }
+  .cover .foot .val.g { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+  /* methodology */
+  .arch { display: flex; align-items: center; gap: 10px; }
+  .arch .nd { flex: 1; background: var(--glass); border: 1px solid var(--line); border-radius: 14px; padding: 15px 16px; text-align: center; }
+  .arch .nd .t { font-size: 14.5px; font-weight: 600; }
+  .arch .nd .s { font-family: var(--mono); font-size: 10.5px; color: var(--soft); margin-top: 5px; }
+  .arch .ar { color: var(--g2); font-size: 16px; flex: 0 0 auto; }
+
+  .meth { display: grid; grid-template-columns: 1.04fr 0.96fr; gap: 28px; margin-top: 22px; flex: 1; min-height: 0; }
+  .steps { display: flex; gap: 12px; margin-bottom: 22px; }
+  .steps .s { flex: 1; }
+  .steps .s .i { font-family: var(--mono); font-size: 11px; color: var(--g2); }
+  .steps .s .n { font-size: 16px; font-weight: 600; margin-top: 3px; }
+  .steps .s .d { font-size: 11.5px; color: var(--soft); margin-top: 3px; line-height: 1.35; }
+
+  .funnel { background: var(--glass); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; }
+  .funnel .ft { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--g1); margin-bottom: 18px; }
+  .constell { display: flex; align-items: center; justify-content: space-between; position: relative; }
+  .constell .seg { flex: 1; text-align: center; position: relative; }
+  .constell .num { font-weight: 200; font-size: 38px; line-height: 1; letter-spacing: -0.02em; }
+  .constell .num.gt { font-weight: 500; }
+  .constell .lab { font-size: 10.5px; color: var(--soft); margin-top: 8px; }
+  .constell .link { flex: 0 0 26px; height: 1px; background: linear-gradient(90deg, rgba(52,211,153,0.5), rgba(34,211,238,0.5)); margin-bottom: 22px; position: relative; }
+  .constell .link::after { content: ""; position: absolute; right: -1px; top: -2px; width: 5px; height: 5px; border-radius: 50%; background: var(--g2); box-shadow: 0 0 8px rgba(34,211,238,0.9); }
+  .funnel .fc { font-family: var(--mono); font-size: 10px; color: var(--faint); margin-top: 16px; line-height: 1.5; }
+
+  .frame { border: 1px solid var(--line2); border-radius: 14px; overflow: hidden; background: var(--glass); box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+  .frame img { width: 100%; display: block; }
+  .frame .fc { font-family: var(--mono); font-size: 10.5px; color: var(--soft); padding: 9px 13px; border-top: 1px solid var(--line); }
+
+  /* prototype */
+  .proto { display: grid; grid-template-columns: 0.84fr 1.16fr; gap: 34px; flex: 1; min-height: 0; align-items: center; }
+  .lk { background: var(--glass); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; margin-bottom: 14px; }
+  .lk .lt { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); margin-bottom: 8px; }
+  .lk .lu { font-weight: 300; font-size: 23px; letter-spacing: -0.01em; word-break: break-all; }
+  .lk .lu.g { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 500; }
+  .lk .lu.sm { font-size: 17px; }
+  .lk .lu.ph { color: var(--soft); }
+  .lk .live { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--soft); margin-top: 9px; }
+  .lk .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--grad); box-shadow: 0 0 9px rgba(52,211,153,0.8); }
+
+  .win { border: 1px solid var(--line2); border-radius: 14px; overflow: hidden; box-shadow: 0 28px 60px rgba(0,0,0,0.6); }
+  .win .wb { display: flex; align-items: center; gap: 6px; padding: 10px 13px; background: rgba(255,255,255,0.05); border-bottom: 1px solid var(--line); }
+  .win .wb .d { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.18); }
+  .win .wb .ad { margin-left: 9px; font-family: var(--mono); font-size: 11px; color: var(--soft); }
+  .win img { width: 100%; display: block; }
+
+  /* attachments */
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 16px; flex: 1; min-height: 0; }
+  .gc { background: var(--glass); border: 1px solid var(--line); border-radius: 13px; overflow: hidden; display: flex; flex-direction: column; }
+  .gc .gi { flex: 1; min-height: 0; overflow: hidden; background: #0a0d14; }
+  .gc .gi img { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; }
+  .gc .cap { padding: 9px 13px; border-top: 1px solid var(--line); }
+  .gc .cap b { font-size: 12.5px; font-weight: 600; }
+  .gc .cap span { display: block; font-family: var(--mono); font-size: 10px; color: var(--soft); margin-top: 2px; }
+  .afoot { margin-top: 16px; display: flex; gap: 28px; font-family: var(--mono); font-size: 12px; color: var(--soft); }
+  .afoot b { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 600; }
+
+  @page { size: 1280px 720px; margin: 0; }
+  @media print { body { gap: 0; padding: 0; display: block; } .slide { margin: 0; } }
+</style>
+</head>
+<body>
+
+<!-- ============= COVER ============= -->
+<section class="slide">
+  <div class="cover">
+    <div class="top">
+      <svg class="mk" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#0a0f1a"/><path d="M9 22 L16 8 L23 22" fill="none" stroke="#34d399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.2 16 H19.8" stroke="#22d3ee" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="8" r="1.8" fill="#34d399"/></svg>
+      <span class="wm">ArchDecision</span>
+      <span class="meta">Prototype Submission</span>
+    </div>
+    <div class="mid">
+      <span class="pill"><span class="d"></span> Context on arrival</span>
+      <h1>Arch<b>Decision</b></h1>
+      <div class="tagl">Why your codebase is the way it is.</div>
+      <div class="subl">Paste a GitHub repo. Get grounded Architecture Decision Records, a codebase you can question in plain English, and a one-click onboarding doc.</div>
+    </div>
+    <div class="foot">
+      <div class="fc">
+        <div class="lbl">Team</div>
+        <div class="val">Harsh Kawatra &nbsp; &middot; &nbsp; Gursimran Kaur</div>
+      </div>
+      <div class="fc">
+        <div class="lbl">Track</div>
+        <div class="val g">AI-Powered Production Function: Reinventing Work</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============= 01 TEAM + THEME ============= -->
+<section class="slide">
+  <div class="pad">
+    <div class="rh">
+      <svg class="mk" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#0a0f1a"/><path d="M9 22 L16 8 L23 22" fill="none" stroke="#34d399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.2 16 H19.8" stroke="#22d3ee" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="8" r="1.8" fill="#34d399"/></svg>
+      <span class="wm">ArchDecision <span class="s">/ submission</span></span>
+      <span class="pg">01<b>/06</b></span>
+    </div>
+    <div class="head">
+      <span class="pill"><span class="d"></span> Team &amp; Theme</span>
+      <h2 class="title">Who built it, <b class="gt">where it fits.</b></h2>
+    </div>
+    <div class="body">
+      <div class="cols2">
+        <div class="glass" style="padding:20px 22px;">
+          <div class="ch">Team</div>
+          <ul class="flist">
+            <li><div class="n">01</div><div class="t"><b>Harsh Kawatra</b><br><span>Build, deployment, full-stack</span></div></li>
+            <li><div class="n">02</div><div class="t"><b>Gursimran Kaur</b><br><span>Product, design, content</span></div></li>
+          </ul>
+        </div>
+        <div class="glass" style="padding:20px 22px;">
+          <div class="ch">Theme</div>
+          <div style="font-weight:300; font-size:21px; line-height:1.25; letter-spacing:-0.01em;">AI-Powered Production Function: <span class="gt" style="font-weight:500;">Reinventing Work.</span></div>
+          <div class="note" style="margin-top:14px;">ArchDecision targets the first weeks on a new codebase, the time engineers spend rediscovering context instead of shipping. It turns reading a repo into a measured, repeatable step.</div>
+        </div>
+      </div>
+      <div class="lede" style="margin-top:34px;">In one line: <span class="gt">institutional memory your codebase never had</span>, recovered from the code itself.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============= 02 PROBLEM ============= -->
+<section class="slide">
+  <div class="pad">
+    <div class="rh">
+      <svg class="mk" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#0a0f1a"/><path d="M9 22 L16 8 L23 22" fill="none" stroke="#34d399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.2 16 H19.8" stroke="#22d3ee" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="8" r="1.8" fill="#34d399"/></svg>
+      <span class="wm">ArchDecision <span class="s">/ submission</span></span>
+      <span class="pg">02<b>/06</b></span>
+    </div>
+    <div class="head">
+      <span class="pill"><span class="d"></span> Problem Statement</span>
+      <h2 class="title">The reasoning behind a codebase <b class="gt">evaporates.</b></h2>
+    </div>
+    <div class="body">
+      <div class="lede" style="margin-bottom:28px;">The engineer who chose the datastore leaves. The chat thread that explained it is gone. New engineers spend weeks rediscovering context, and teams repeat mistakes they already solved.</div>
+      <div class="cols2">
+        <div class="glass" style="padding:20px 22px;">
+          <div class="ch">Why it persists</div>
+          <p style="font-size:14px; line-height:1.6; color:var(--soft);">Architecture Decision Records are the known best practice for capturing this. Almost nobody writes them, because doing it by hand is tedious work with a delayed payoff. The context keeps disappearing, one departure at a time.</p>
+        </div>
+        <div class="glass" style="padding:20px 22px;">
+          <div class="ch">The opening</div>
+          <p style="font-size:14px; line-height:1.6; color:var(--soft);">One source of truth never leaves: the code. Dependencies, file structure, configs, and entry points still hold the evidence for why the system looks the way it does. That evidence is just never read as a decision record.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============= 03 SOLUTION ============= -->
+<section class="slide">
+  <div class="pad" style="padding-top:42px;">
+    <div class="rh">
+      <svg class="mk" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#0a0f1a"/><path d="M9 22 L16 8 L23 22" fill="none" stroke="#34d399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.2 16 H19.8" stroke="#22d3ee" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="8" r="1.8" fill="#34d399"/></svg>
+      <span class="wm">ArchDecision <span class="s">/ submission</span></span>
+      <span class="pg">03<b>/06</b></span>
+    </div>
+    <div class="head" style="margin-bottom:18px;">
+      <span class="pill"><span class="d"></span> Solution</span>
+      <h2 class="title" style="font-size:34px; margin-top:14px;">Recover the decisions from the code, <b class="gt">write the record itself.</b></h2>
+    </div>
+    <div class="body">
+      <div class="cols2">
+        <div class="glass" style="padding:16px 20px;">
+          <div class="ch">What it does</div>
+          <ul class="flist">
+            <li><div class="n">01</div><div class="t"><b>ADR generator.</b> <span>5 to 8 records in the Nygard format, each with the evidence it was inferred from.</span></div></li>
+            <li><div class="n">02</div><div class="t"><b>Ask your codebase.</b> <span>Plain-English answers scoped to the repo, with file citations.</span></div></li>
+            <li><div class="n">03</div><div class="t"><b>Onboarding doc.</b> <span>A day-one guide to how the codebase works, ready to commit.</span></div></li>
+            <li><div class="n">04</div><div class="t"><b>PR architectural review.</b> <span>Checks a pull request against the generated ADRs.</span></div></li>
+            <li><div class="n">05</div><div class="t"><b>Tech-debt drift map.</b> <span>Where the code diverged from the decisions it was built on.</span></div></li>
+          </ul>
+        </div>
+        <div class="glass" style="padding:16px 20px;">
+          <div class="ch">How we built it</div>
+          <div class="kl"><b>Frontend.</b> <span>React, Vite, TypeScript, Tailwind.</span></div>
+          <div class="kl"><b>Backend.</b> <span>Vercel serverless functions in Node and TypeScript, streamed over SSE.</span></div>
+          <div class="kl"><b>Model.</b> <span>Gemini 2.5 Flash behind a swappable OpenAI-compatible interface. No database, no auth, no paid services.</span></div>
+          <div class="ch" style="margin-top:14px;">Decision points</div>
+          <ul class="dl">
+            <li><b>Grounding over generation.</b> Never the raw repo, only a compact RepoProfile within a token budget.</li>
+            <li><b>Repo content is data, not instructions.</b> Analyzed, never followed.</li>
+            <li><b>Swappable model layer.</b> Groq, OpenRouter, or GitHub Models by env vars. Key stays server-side.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="mrow">
+        <div class="mc"><div class="v"><span class="gt">~60s</span></div><div class="l">Time to first context, per analysis (target)</div></div>
+        <div class="mc"><div class="v"><span class="gt">5 to 8</span></div><div class="l">Decision records produced per repo</div></div>
+        <div class="mc"><div class="v"><span class="gt">100%</span></div><div class="l">Claims that cite evidence, or stay silent</div></div>
+        <div class="mc"><div class="v"><span class="gt">3</span></div><div class="l">Confidence levels labeled on every ADR</div></div>
+      </div>
+      <div class="note"><b>Scalability and usability.</b> Stateless serverless functions scale on demand, the profile is cached so Ask and Onboarding reuse it, setup is zero (paste a URL, no login), and every artifact downloads as committable Markdown.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============= 04 METHODOLOGY ============= -->
+<section class="slide">
+  <div class="pad" style="padding-top:42px;">
+    <div class="rh">
+      <svg class="mk" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#0a0f1a"/><path d="M9 22 L16 8 L23 22" fill="none" stroke="#34d399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.2 16 H19.8" stroke="#22d3ee" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="8" r="1.8" fill="#34d399"/></svg>
+      <span class="wm">ArchDecision <span class="s">/ submission</span></span>
+      <span class="pg">04<b>/06</b></span>
+    </div>
+    <div class="head" style="margin-bottom:18px;">
+      <span class="pill"><span class="d"></span> Methodology</span>
+      <h2 class="title" style="font-size:34px; margin-top:14px;">Architecture, pipeline, and <b class="gt">how the input shrinks.</b></h2>
+    </div>
+    <div class="body" style="display:flex; flex-direction:column;">
+      <div class="arch">
+        <div class="nd"><div class="t">Browser SPA</div><div class="s">React / Vite, HTTPS + SSE</div></div>
+        <div class="ar">&rarr;</div>
+        <div class="nd"><div class="t">Serverless API</div><div class="s">Vercel functions</div></div>
+        <div class="ar">&rarr;</div>
+        <div class="nd"><div class="t">GitHub REST</div><div class="s">repo tree and files</div></div>
+        <div class="ar">&rarr;</div>
+        <div class="nd"><div class="t">Gemini 2.5 Flash</div><div class="s">structured ADRs</div></div>
+      </div>
+      <div class="meth">
+        <div>
+          <div class="steps">
+            <div class="s"><div class="i">01</div><div class="n">Ingest</div><div class="d">Tree, manifests, signal files.</div></div>
+            <div class="s"><div class="i">02</div><div class="n">Profile</div><div class="d">Compact grounded context.</div></div>
+            <div class="s"><div class="i">03</div><div class="n">Infer</div><div class="d">Decisions with evidence.</div></div>
+          </div>
+          <div class="funnel">
+            <div class="ft">Distillation / expressjs-express</div>
+            <div class="constell">
+              <div class="seg"><div class="num">213</div><div class="lab">files in repo</div></div>
+              <div class="link"></div>
+              <div class="seg"><div class="num">~20</div><div class="lab">signal files</div></div>
+              <div class="link"></div>
+              <div class="seg"><div class="num">1</div><div class="lab">RepoProfile</div></div>
+              <div class="link"></div>
+              <div class="seg"><div class="num gt">8</div><div class="lab">decision records</div></div>
+            </div>
+            <div class="fc">Source: live analysis (213 files, 8 ADRs) and MAX_SIGNAL_FILES in api/_lib/ingest.ts.</div>
+          </div>
+        </div>
+        <div class="frame" style="align-self:center;">
+          <img src="2.png" alt="ArchDecision analysis pipeline running" />
+          <div class="fc">Live pipeline: fetch, read structure, select signals, infer, generate.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============= 05 WORKING PROTOTYPE ============= -->
+<section class="slide">
+  <div class="pad">
+    <div class="rh">
+      <svg class="mk" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#0a0f1a"/><path d="M9 22 L16 8 L23 22" fill="none" stroke="#34d399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.2 16 H19.8" stroke="#22d3ee" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="8" r="1.8" fill="#34d399"/></svg>
+      <span class="wm">ArchDecision <span class="s">/ submission</span></span>
+      <span class="pg">05<b>/06</b></span>
+    </div>
+    <div class="head">
+      <span class="pill"><span class="d"></span> Working Prototype</span>
+      <h2 class="title">Live, deployed, and <b class="gt">usable right now.</b></h2>
+    </div>
+    <div class="body">
+      <div class="proto">
+        <div>
+          <div class="lk">
+            <div class="lt">Live demo</div>
+            <div class="lu g">archdecision.vercel.app</div>
+            <div class="live"><span class="dot"></span> Deployed on Vercel, health endpoint returns ok.</div>
+          </div>
+          <div class="lk">
+            <div class="lt">Source</div>
+            <div class="lu sm">github.com/harshkawatra11/archdecision</div>
+          </div>
+          <div class="lk">
+            <div class="lt">Demo video</div>
+            <div class="lu sm ph">[ add link ]</div>
+          </div>
+        </div>
+        <div class="win">
+          <div class="wb"><span class="d"></span><span class="d"></span><span class="d"></span><span class="ad">archdecision.vercel.app</span></div>
+          <img src="1.png" alt="ArchDecision landing page" />
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============= 06 ATTACHMENTS ============= -->
+<section class="slide">
+  <div class="pad" style="padding-top:42px;">
+    <div class="rh">
+      <svg class="mk" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#0a0f1a"/><path d="M9 22 L16 8 L23 22" fill="none" stroke="#34d399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.2 16 H19.8" stroke="#22d3ee" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="8" r="1.8" fill="#34d399"/></svg>
+      <span class="wm">ArchDecision <span class="s">/ submission</span></span>
+      <span class="pg">06<b>/06</b></span>
+    </div>
+    <div class="head" style="margin-bottom:18px;">
+      <span class="pill"><span class="d"></span> Attachments</span>
+      <h2 class="title" style="font-size:40px; margin-top:14px;">Screens from the <b class="gt">running app.</b></h2>
+    </div>
+    <div class="grid">
+      <div class="gc"><div class="gi"><img src="2.png" alt="Pipeline run"></div><div class="cap"><b>Pipeline run</b><span>fetch, structure, signals, infer</span></div></div>
+      <div class="gc"><div class="gi"><img src="3.png" alt="Decisions list"></div><div class="cap"><b>Decisions list</b><span>8 ADRs, inferred and grounded</span></div></div>
+      <div class="gc"><div class="gi"><img src="4.png" alt="ADR detail"></div><div class="cap"><b>ADR detail</b><span>decision, rationale, evidence</span></div></div>
+      <div class="gc"><div class="gi"><img src="5.png" alt="Ask the codebase"></div><div class="cap"><b>Ask the codebase</b><span>answers with file citations</span></div></div>
+      <div class="gc"><div class="gi"><img src="6.png" alt="Onboarding doc"></div><div class="cap"><b>Onboarding doc</b><span>day-one guide, committable</span></div></div>
+      <div class="gc"><div class="gi"><img src="7.png" alt="Drift map"></div><div class="cap"><b>Drift map</b><span>now vs intended, per ADR</span></div></div>
+    </div>
+    <div class="afoot">
+      <span>Live &nbsp; <b>archdecision.vercel.app</b></span>
+      <span>Source &nbsp; <b>github.com/harshkawatra11/archdecision</b></span>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

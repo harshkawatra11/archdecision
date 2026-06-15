@@ -80,8 +80,10 @@ async function generateAdrs(profile: RepoProfile): Promise<ADR[]> {
   if (!parsed.ok) {
     throw new ModelFormatError('The model returned an unexpected format. Please try analyzing again.');
   }
+  // Defensive guardrail against a pathological response; not a product-level cap.
+  const MAX_ADRS = 16;
   // Re-number sequentially for a clean UI.
-  return parsed.adrs.map((a, i) => ({ ...a, id: `ADR-${String(i + 1).padStart(3, '0')}` }));
+  return parsed.adrs.slice(0, MAX_ADRS).map((a, i) => ({ ...a, id: `ADR-${String(i + 1).padStart(3, '0')}` }));
 }
 
 function safeExtract(raw: string): unknown {

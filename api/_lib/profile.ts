@@ -151,7 +151,7 @@ export function toLite(profile: RepoProfile): RepoProfileLite {
 export function profileForPrompt(profile: RepoProfile): string {
   const treePreview = profile.fileTree
     .filter((n) => n.type === 'file')
-    .slice(0, 400)
+    .slice(0, 1200)
     .map((n) => n.path)
     .join('\n');
 
@@ -179,7 +179,7 @@ export function profileForPrompt(profile: RepoProfile): string {
     manifests || '(no recognized manifests found)',
     '',
     'README:',
-    profile.readme ? profile.readme.slice(0, 8000) : '(no README found)',
+    profile.readme ? profile.readme.slice(0, 16000) : '(no README found)',
     '',
     'FILE TREE (paths only, sample):',
     treePreview,

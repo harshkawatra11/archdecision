@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { CornerDownLeft, FileText, Loader2, MessagesSquare } from 'lucide-react';
-import type { ChatMessage, RepoProfileLite } from '../types';
+import type { ADR, ChatMessage, RepoProfileLite } from '../types';
 import { ask } from '../lib/api';
 import Markdown from './Markdown';
 
 interface Props {
   profile: RepoProfileLite;
+  adrs: ADR[];
   pat: string;
 }
 
@@ -16,7 +17,7 @@ const SUGGESTED = [
   'What is the entry point and how does a request flow through it?',
 ];
 
-export default function AskPanel({ profile, pat }: Props) {
+export default function AskPanel({ profile, adrs, pat }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -47,7 +48,7 @@ export default function AskPanel({ profile, pat }: Props) {
       });
 
     await ask(
-      { repoUrl: `${profile.owner}/${profile.repo}`, sha: profile.sha, question, history, pat: pat || undefined },
+      { repoUrl: `${profile.owner}/${profile.repo}`, sha: profile.sha, question, history, adrs, pat: pat || undefined },
       {
         onToken: (t) => update((m) => ({ ...m, content: m.content + t })),
         onSources: (sources, considered) => update((m) => ({ ...m, sources, considered, streaming: false })),

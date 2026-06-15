@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ArchDecision - Prototype Submission</title>
+<style>
+  :root {
+    --bg: #0b0c0f;
+    --bg2: #0e1014;
+    --panel: #14171d;
+    --panel2: #181c23;
+    --line: rgba(255,255,255,0.085);
+    --line2: rgba(255,255,255,0.16);
+    --text: #edeff2;
+    --soft: #9aa1ac;
+    --faint: #646b76;
+    --accent: #35d07f;
+    --accent-d: #27b96d;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: #050608; color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; overflow: hidden; }
+
+  /* ===== scaled deck ===== */
+  .deckwrap { position: fixed; inset: 0; }
+  .deck { position: absolute; left: 50%; top: 50%; width: 1280px; height: 720px; transform: translate(-50%,-50%); transform-origin: center center; }
+
+  .slide {
+    position: absolute; inset: 0; background: var(--bg);
+    opacity: 0; pointer-events: none; transition: opacity .45s ease;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+    background-size: 80px 80px;
+  }
+  .slide.active { opacity: 1; pointer-events: auto; }
+
+  /* reveal motion */
+  .slide [data-r] { opacity: 0; transform: translateY(16px); transition: opacity .6s cubic-bezier(.2,.7,.2,1), transform .6s cubic-bezier(.2,.7,.2,1); transition-delay: 0ms; }
+  .slide.active [data-r] { opacity: 1; transform: none; transition-delay: calc(var(--d, 0) * 80ms + 120ms); }
+
+  .pad { position: relative; z-index: 2; height: 100%; padding: 56px 68px; display: flex; flex-direction: column; }
+
+  .topline { display: flex; align-items: center; gap: 11px; margin-bottom: auto; }
+  .topline .mk { width: 26px; height: 26px; }
+  .topline .nm { font-weight: 600; font-size: 14px; letter-spacing: 0.01em; }
+  .topline .nm s { color: var(--faint); text-decoration: none; }
+  .topline .sec { margin-left: auto; font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--soft); }
+
+  .kick { font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent); margin-bottom: 16px; }
+  h1 { font-weight: 600; font-size: 46px; line-height: 1.04; letter-spacing: -0.03em; }
+  h1 .a { color: var(--accent); }
+  .lede { font-weight: 400; font-size: 24px; line-height: 1.4; letter-spacing: -0.015em; color: #d4d8de; max-width: 900px; }
+  .lede .a { color: var(--accent); }
+  .soft { color: var(--soft); }
+
+  .colh { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); padding-bottom: 10px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+  .para { font-size: 14px; line-height: 1.62; color: var(--soft); }
+
+  /* ===== cover ===== */
+  .cover { height: 100%; padding: 60px 68px; display: flex; flex-direction: column; }
+  .cover .ct { display: flex; align-items: center; gap: 12px; }
+  .cover .ct .mk { width: 30px; height: 30px; }
+  .cover .ct .nm { font-weight: 600; font-size: 16px; }
+  .cover .ct .rt { margin-left: auto; font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--soft); }
+  .cover .cm { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .cover h2 { font-weight: 600; font-size: 104px; line-height: 0.94; letter-spacing: -0.045em; }
+  .cover h2 .thin { font-weight: 200; color: var(--soft); }
+  .cover .bar { width: 60px; height: 3px; background: var(--accent); margin: 28px 0 24px; }
+  .cover .tg { font-size: 27px; font-weight: 400; letter-spacing: -0.02em; color: #d4d8de; }
+  .cover .sb { margin-top: 16px; max-width: 580px; font-size: 16px; line-height: 1.6; color: var(--soft); }
+  .cover .cf { display: flex; gap: 56px; padding-top: 22px; border-top: 1px solid var(--line); }
+  .cover .cf .lb { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--faint); margin-bottom: 7px; }
+  .cover .cf .vv { font-size: 14.5px; font-weight: 500; }
+  .cover .cf .vv.a { color: var(--accent); max-width: 360px; line-height: 1.3; }
+  .cover .hint { margin-top: 22px; font-family: var(--mono); font-size: 11px; color: var(--faint); letter-spacing: 0.04em; }
+  .cover .hint kbd { display: inline-block; border: 1px solid var(--line2); border-radius: 5px; padding: 1px 7px; color: var(--soft); margin: 0 2px; }
+
+  /* feature list */
+  .flist { list-style: none; }
+  .flist li { display: flex; gap: 13px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+  .flist li:last-child { border-bottom: none; }
+  .flist .n { font-family: var(--mono); font-size: 11px; color: var(--accent); width: 18px; flex: 0 0 auto; padding-top: 2px; }
+  .flist .t { font-size: 14px; line-height: 1.45; }
+  .flist .t b { font-weight: 600; color: var(--text); }
+  .flist .t span { color: var(--soft); }
+
+  .kl { font-size: 13px; line-height: 1.5; margin-bottom: 9px; }
+  .kl b { font-weight: 600; }
+  .kl span { color: var(--soft); }
+  .dl { list-style: none; margin-top: 3px; }
+  .dl li { position: relative; padding-left: 15px; font-size: 12.5px; line-height: 1.45; color: var(--soft); margin-bottom: 7px; }
+  .dl li::before { content: ""; position: absolute; left: 0; top: 6px; width: 5px; height: 5px; background: var(--accent); border-radius: 50%; }
+  .dl li b { color: #c8cdd5; font-weight: 600; }
+
+  .mrow { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-top: 18px; }
+  .mc { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 15px 17px; }
+  .mc .v { font-weight: 600; font-size: 28px; letter-spacing: -0.02em; color: var(--accent); line-height: 1; }
+  .mc .l { font-size: 11px; color: var(--soft); margin-top: 9px; line-height: 1.35; }
+  .note { margin-top: 15px; font-size: 12.5px; line-height: 1.5; color: var(--soft); }
+  .note b { color: #c8cdd5; font-weight: 600; }
+
+  /* methodology */
+  .arch { display: flex; align-items: center; gap: 10px; }
+  .arch .nd { flex: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .arch .nd .t { font-weight: 600; font-size: 14px; }
+  .arch .nd .s { font-family: var(--mono); font-size: 10px; color: var(--soft); margin-top: 5px; }
+  .arch .ar { color: var(--accent); font-size: 15px; }
+  .meth { display: grid; grid-template-columns: 1fr 0.92fr; gap: 32px; margin-top: 22px; flex: 1; min-height: 0; }
+  .steps { display: flex; gap: 22px; margin-bottom: 20px; }
+  .steps .si { font-family: var(--mono); font-size: 10px; color: var(--accent); }
+  .steps .sn { font-weight: 600; font-size: 16px; margin-top: 3px; letter-spacing: -0.01em; }
+  .steps .sd { font-size: 11px; color: var(--soft); margin-top: 2px; }
+
+  .bars { }
+  .bars .bh { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+  .bar { display: flex; align-items: center; gap: 14px; margin-bottom: 11px; }
+  .bar .bl { width: 132px; flex: 0 0 132px; font-size: 12.5px; color: var(--soft); text-align: right; }
+  .bar .bt { flex: 1; height: 26px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .bar .bf { height: 100%; width: 0; background: var(--accent); border-radius: 5px; display: flex; align-items: center; padding-left: 11px; color: #06140c; font-weight: 700; font-size: 12px; font-family: var(--mono); transition: width .9s cubic-bezier(.2,.7,.2,1); transition-delay: .35s; }
+  .slide.active .bar .bf { width: var(--w); }
+  .bar .bf.dim { background: #2d6cff; color: #fff; }
+  .bcap { font-family: var(--mono); font-size: 10px; color: var(--faint); margin-top: 12px; line-height: 1.5; }
+
+  .frame { border: 1px solid var(--line2); border-radius: 12px; overflow: hidden; background: var(--panel); box-shadow: 0 18px 44px rgba(0,0,0,0.5); align-self: center; }
+  .frame img { width: 100%; display: block; }
+  .frame .fc { font-family: var(--mono); font-size: 10px; color: var(--soft); padding: 8px 12px; border-top: 1px solid var(--line); }
+
+  /* prototype */
+  .proto { display: grid; grid-template-columns: 0.82fr 1.18fr; gap: 34px; flex: 1; min-height: 0; align-items: center; }
+  .lk { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 19px 22px; margin-bottom: 13px; }
+  .lk .lt { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); margin-bottom: 7px; }
+  .lk .lu { font-weight: 600; font-size: 22px; letter-spacing: -0.02em; color: var(--accent); word-break: break-all; }
+  .lk .lu.sm { font-size: 16px; color: var(--text); }
+  .lk .lu.ph { color: var(--soft); }
+  .lk .lv { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--soft); margin-top: 8px; }
+  .lk .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px rgba(53,208,127,0.16); }
+  .win { border: 1px solid var(--line2); border-radius: 12px; overflow: hidden; box-shadow: 0 26px 56px rgba(0,0,0,0.6); }
+  .win .wb { display: flex; align-items: center; gap: 6px; padding: 10px 13px; background: #11141a; border-bottom: 1px solid var(--line); }
+  .win .wb .d { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.16); }
+  .win .wb .ad { margin-left: 9px; font-family: var(--mono); font-size: 11px; color: var(--soft); }
+  .win img { width: 100%; display: block; }
+
+  /* attachments */
+  .grid { display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(2,1fr); gap: 16px; flex: 1; min-height: 0; }
+  .gc { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+  .gc .gi { flex: 1; min-height: 0; overflow: hidden; background: #0a0c10; }
+  .gc .gi img { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; }
+  .gc .cap { padding: 8px 12px; border-top: 1px solid var(--line); }
+  .gc .cap b { font-size: 12.5px; font-weight: 600; }
+  .gc .cap span { display: block; font-family: var(--mono); font-size: 10px; color: var(--soft); margin-top: 2px; }
+  .afoot { margin-top: 15px; display: flex; gap: 28px; font-family: var(--mono); font-size: 12px; color: var(--soft); }
+  .afoot b { color: var(--accent); font-weight: 600; }
+
+  /* ============ CHROME (viewport-fixed UI) ============ */
+  .progress { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: rgba(255,255,255,0.06); z-index: 50; }
+  .progress .pf { height: 100%; background: var(--accent); width: 0; transition: width .45s cubic-bezier(.2,.7,.2,1); }
+
+  .rail { position: fixed; left: 22px; top: 50%; transform: translateY(-50%); z-index: 50; display: flex; flex-direction: column; gap: 4px; }
+  .rail button { all: unset; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; color: var(--faint); transition: color .25s, background .25s; }
+  .rail button .tk { width: 18px; height: 2px; background: currentColor; border-radius: 2px; transition: width .25s; }
+  .rail button .lbl { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0; transform: translateX(-4px); transition: opacity .25s, transform .25s; white-space: nowrap; }
+  .rail:hover button .lbl { opacity: 1; transform: none; }
+  .rail button:hover { color: var(--soft); }
+  .rail button.on { color: var(--accent); }
+  .rail button.on .tk { width: 28px; }
+
+  .nav { position: fixed; bottom: 22px; right: 26px; z-index: 50; display: flex; align-items: center; gap: 14px; font-family: var(--mono); }
+  .nav .count { font-size: 12px; color: var(--soft); letter-spacing: 0.08em; }
+  .nav .count b { color: var(--text); }
+  .nav button { all: unset; cursor: pointer; width: 36px; height: 36px; border: 1px solid var(--line2); border-radius: 9px; display: flex; align-items: center; justify-content: center; color: var(--soft); transition: border-color .2s, color .2s, background .2s; }
+  .nav button:hover { color: var(--text); border-color: var(--accent); background: rgba(53,208,127,0.08); }
+  .nav button svg { width: 16px; height: 16px; }
+
+  .ohint { position: fixed; bottom: 24px; left: 26px; z-index: 50; font-family: var(--mono); font-size: 11px; color: var(--faint); }
+  .ohint kbd { border: 1px solid var(--line2); border-radius: 5px; padding: 1px 6px; color: var(--soft); }
+
+  /* overview */
+  .overview { position: fixed; inset: 0; z-index: 80; background: rgba(5,6,8,0.94); display: none; padding: 64px; }
+  .overview.show { display: flex; flex-direction: column; }
+  .overview h3 { font-family: var(--mono); font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); margin-bottom: 26px; }
+  .ogrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+  .ocard { all: unset; cursor: pointer; border: 1px solid var(--line); border-radius: 14px; padding: 22px 22px 26px; background: var(--panel); transition: border-color .2s, transform .2s, background .2s; }
+  .ocard:hover { border-color: var(--accent); transform: translateY(-3px); background: var(--panel2); }
+  .ocard.on { border-color: var(--accent); }
+  .ocard .on-n { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+  .ocard .on-t { font-weight: 600; font-size: 21px; margin-top: 14px; letter-spacing: -0.02em; }
+  .ocard .on-d { font-size: 12.5px; color: var(--soft); margin-top: 8px; line-height: 1.4; }
+
+  /* print fallback: 7 clean pages */
+  @page { size: 1280px 720px; margin: 0; }
+  @media print {
+    html, body { overflow: visible; background: #fff; }
+    .progress, .rail, .nav, .ohint, .overview, .cover .hint { display: none !important; }
+    .deckwrap { position: static; }
+    .deck { position: static; transform: none; width: 1280px; height: auto; }
+    .slide { position: relative; inset: auto; opacity: 1 !important; width: 1280px; height: 720px; page-break-after: always; break-after: page; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .slide:last-child { page-break-after: auto; }
+    .slide [data-r] { opacity: 1 !important; transform: none !important; }
+    .bar .bf { width: var(--w) !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="deckwrap">
+<div class="deck" id="deck">
+
+  <!-- ===== COVER ===== -->
+  <section class="slide" data-title="Cover">
+    <div class="cover">
+      <div class="ct" data-r style="--d:0">
+        <svg class="mk" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#11141a"/><path d="M9 22 L16 8 L23 22" fill="none" stroke="#35d07f" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.2 16 H19.8" stroke="#35d07f" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="8" r="1.8" fill="#35d07f"/></svg>
+        <span class="nm">ArchDecision</span>
+        <span class="rt">Prototype Submission &middot; 2026</span>
+      </div>
+      <div class="cm">
+        <h2 data-r style="--d:1">Arch<span class="thin">Decision</span></h2>
+        <div class="bar" data-r style="--d:2"></div>
+        <div class="tg" data-r style="--d:3">Why your codebase is the way it is.</div>
+        <div class="sb" data-r style="--d:4">Paste a GitHub repo. Get grounded Architecture Decision Records, a codebase you can question in plain English, and a one-click onboarding doc.</div>
+      </div>
+      <div class="cf" data-r style="--d:5">
+        <div><div class="lb">Team</div><div class="vv">Harsh Kawatra &nbsp;&middot;&nbsp; Gursimran Kaur</div></div>
+        <div><div class="lb">Track</div><div class="vv a">AI-Powered Production Function: Reinventing Work</div></div>
+      </div>
+      <div class="hint" data-r style="--d:6">Use <kbd>&rarr;</kbd> <kbd>&larr;</kbd> to move &nbsp;&middot;&nbsp; <kbd>O</kbd> for overview &nbsp;&middot;&nbsp; click to advance</div>
+    </div>
+  </section>
+
+  <!-- ===== 01 TEAM ===== -->
+  <section class="slide" data-title="Team &amp; Theme">
+    <div class="pad">
+      <div class="topline" data-r style="--d:0"><svg class="mk" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#11141a"/><path d="M9 22 L16 8 L23 22" fill="none" stroke="#35d07f" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.2 16 H19.8" stroke="#35d07f" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="8" r="1.8" fill="#35d07f"/></svg><span class="nm">ArchDecision <s>/ submission</s></span><span class="sec">01 / 06</span></div>
+      <div class="kick" data-r style="--d:1">Team &amp; Theme</div>
+      <h1 data-r style="--d:2">Who built it, <span class="a">where it fits.</span></h1>
+      <div class="two" data-r style="--d:3; margin-top:30px;">
+        <div>
+          <div class="colh">Team</div>
+          <ul class="flist">
+            <li><div class="n">01</div><div class="t"><b>Harsh Kawatra</b><br><span>Build, deployment, full-stack</span></div></li>
+            <li><div class="n">02</div><div class="t"><b>Gursimran Kaur</b><br><span>Product, design, content</span></div></li>
+          </ul>
+        </div>
+        <div>
+          <div class="colh">Theme</div>
+          <div class="lede" style="font-size:21px;">AI-Powered Production Function: <span class="a">Reinventing Work.</span></div>
+          <div class="note" style="margin-top:13px;">ArchDecision targets the first weeks on a new codebase, the time engineers spend rediscovering context instead of shipping. It turns reading a repo into a measured, repeatable step.</div>
+        </div>
+      </div>
+      <div class="lede" data-r style="--d:4; margin-top:34px; padding-top:22px; border-top:1px solid var(--line); font-size:20px;">In one line: <span class="a">institutional memory your codebase never had</span>, recovered from the code itself.</div>
+    </div>
+  </section>
+
+  <!-- ===== 02 PROBLEM ===== -->
+  <section class="slide" data-title="Problem">
+    <div class="pad">
+      <div class="topline" data-r style="--d:0"><svg class="mk" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#11141a"/><path d="M9 22 L16 8 L23 22" fill="none" stroke="#35d07f" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.2 16 H19.8" stroke="#35d07f" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="8" r="1.8" fill="#35d07f"/></svg><span class="nm">ArchDecision <s>/ submission</s></span><span class="sec">02 / 06</span></div>
+      <div class="kick" data-r style="--d:1">Problem Statement</div>
+      <h1 data-r style="--d:2">The reasoning behind a codebase <span class="a">evaporates.</span></h1>
+      <div class="lede" data-r style="--d:3; margin-top:24px;">The engineer who chose the datastore leaves. The chat thread that explained it is gone. New engineers spend weeks rediscovering context, and teams repeat mistakes they already solved.</div>
+      <div class="two" data-r style="--d:4; margin-top:26px; padding-top:22px; border-top:1px solid var(--line);">
+        <div><div class="colh">Why it persists</div><p class="para">Architecture Decision Records are the known best practice for capturing this. Almost nobody writes them, because doing it by hand is tedious work with a delayed payoff. The context keeps disappearing, one departure at a time.</p></div>
+        <div><div class="colh">The opening</div><p class="para">One source of truth never leaves: the code. Dependencies, file structure, configs, and entry points still hold the evidence for why the system looks the way it does. That evidence is just never read as a decision record.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 03 SOLUTION ===== -->
+  <section class="slide" data-title="Solution">
+    <div class="pad" style="padding-top:44px;">
+      <div class="topline" data-r style="--d:0"><svg class="mk" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#11141a"/><path d="M9 22 L16 8 L23 22" fill="none" stroke="#35d07f" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.2 16 H19.8" stroke="#35d07f" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="8" r="1.8" fill="#35d07f"/></svg><span class="nm">ArchDecision <s>/ submission</s></span><span class="sec">03 / 06</span></div>
+      <div class="kick" data-r style="--d:1">Solution</div>
+      <h1 data-r style="--d:2; font-size:34px;">Recover the decisions from the code, <span class="a">write the record itself.</span></h1>
+      <div class="two" data-r style="--d:3; margin-top:20px;">
+        <div>
+          <div class="colh">What it does</div>
+          <ul class="flist">
+            <li><div class="n">01</div><div class="t"><b>ADR generator.</b> <span>5 to 8 records in the Nygard format, each with the evidence it was inferred from.</span></div></li>
+            <li><div class="n">02</div><div class="t"><b>Ask your codebase.</b> <span>Plain-English answers scoped to the repo, with file citations.</span></div></li>
+            <li><div class="n">03</div><div class="t"><b>Onboarding doc.</b> <span>A day-one guide to how the codebase works, ready to commit.</span></div></li>
+            <li><div class="n">04</div><div class="t"><b>PR architectural review.</b> <span>Checks a pull request against the generated ADRs.</span></div></li>
+            <li><div class="n">05</div><div class="t"><b>Tech-debt drift map.</b> <span>Where the code diverged from the decisions it was built on.</span></div></li>
+          </ul>
+        </div>
+        <div>
+          <div class="colh">How we built it</div>
+          <div class="kl"><b>Frontend.</b> <span>React, Vite, TypeScript, Tailwind.</span></div>
+          <div class="kl"><b>Backend.</b> <span>Vercel serverless functions in Node and TypeScript, streamed over SSE.</span></div>
+          <div class="kl"><b>Model.</b> <span>Gemini 2.5 Flash behind a swappable OpenAI-compatible interface. No database, no auth, no paid services.</span></div>
+          <div class="colh" style="margin-top:13px;">Decision points</div>
+          <ul class="dl">
+            <li><b>Grounding over generation.</b> Never the raw repo, only a compact RepoProfile within a token budget.</li>
+            <li><b>Repo content is data, not instructions.</b> Analyzed, never followed.</li>
+            <li><b>Swappable model layer.</b> Groq, OpenRouter, or GitHub Models by env vars. Key stays server-side.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="mrow" data-r style="--d:4">
+        <div class="mc"><div class="v">~60s</div><div class="l">Time to first context, per analysis (target)</div></div>
+        <div class="mc"><div class="v">5 to 8</div><div class="l">Decision records produced per repo</div></div>
+        <div class="mc"><div class="v">100%</div><div class="l">Claims that cite evidence, or stay silent</div></div>
+        <div class="mc"><div class="v">3</div><div class="l">Confidence levels labeled on every ADR</div></div>
+      </div>
+      <div class="note" data-r style="--d:5"><b>Scalability and usability.</b> Stateless serverless functions scale on demand, the profile is cached so Ask and Onboarding reuse it, setup is zero (paste a URL, no login), and every artifact downloads as committable Markdown.</div>
+    </div>
+  </section>
+
+  <!-- ===== 04 METHODOLOGY ===== -->
+  <section class="slide" data-title="Methodology">
+    <div class="pad" style="padding-top:44px;">
+      <div class="topline" data-r style="--d:0"><svg class="mk" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#11141a"/><path d="M9 22 L16 8 L23 22" fill="none" stroke="#35d07f" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.2 16 H19.8" stroke="#35d07f" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="8" r="1.8" fill="#35d07f"/></svg><span class="nm">ArchDecision <s>/ submission</s></span><span class="sec">04 / 06</span></div>
+      <div class="kick" data-r style="--d:1">Methodology</div>
+      <h1 data-r style="--d:2; font-size:34px;">Architecture, pipeline, and <span class="a">how the input shrinks.</span></h1>
+      <div class="arch" data-r style="--d:3; margin-top:20px;">
+        <div class="nd"><div class="t">Browser SPA</div><div class="s">React / Vite, HTTPS + SSE</div></div>
+        <div class="ar">&rarr;</div>
+        <div class="nd"><div class="t">Serverless API</div><div class="s">Vercel functions</div></div>
+        <div class="ar">&rarr;</div>
+        <div class="nd"><div class="t">GitHub REST</div><div class="s">repo tree and files</div></div>
+        <div class="ar">&rarr;</div>
+        <div class="nd"><div class="t">Gemini 2.5 Flash</div><div class="s">structured ADRs</div></div>
+      </div>
+      <div class="meth">
+        <div data-r style="--d:4">
+          <div class="steps">
+            <div><div class="si">01</div><div class="sn">Ingest</div><div class="sd">Tree, manifests, signals.</div></div>
+            <div><div class="si">02</div><div class="sn">Profile</div><div class="sd">Grounded context.</div></div>
+            <div><div class="si">03</div><div class="sn">Infer</div><div class="sd">Decisions with evidence.</div></div>
+          </div>
+          <div class="bars">
+            <div class="bh">Distillation / expressjs-express</div>
+            <div class="bar"><div class="bl">Files in repo</div><div class="bt"><div class="bf dim" style="--w:100%">213</div></div></div>
+            <div class="bar"><div class="bl">Signal files selected</div><div class="bt"><div class="bf" style="--w:24%">~20</div></div></div>
+            <div class="bar"><div class="bl">RepoProfile</div><div class="bt"><div class="bf" style="--w:9%">1</div></div></div>
+            <div class="bar"><div class="bl">Decision records</div><div class="bt"><div class="bf" style="--w:14%">8</div></div></div>
+            <div class="bcap">Source: live analysis (213 files, 8 ADRs) and MAX_SIGNAL_FILES in api/_lib/ingest.ts.</div>
+          </div>
+        </div>
+        <div class="frame" data-r style="--d:5">
+          <img src="2.png" alt="ArchDecision analysis pipeline running" />
+          <div class="fc">Live pipeline: fetch, structure, signals, infer, generate.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 05 PROTOTYPE ===== -->
+  <section class="slide" data-title="Prototype">
+    <div class="pad">
+      <div class="topline" data-r style="--d:0"><svg class="mk" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#11141a"/><path d="M9 22 L16 8 L23 22" fill="none" stroke="#35d07f" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.2 16 H19.8" stroke="#35d07f" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="8" r="1.8" fill="#35d07f"/></svg><span class="nm">ArchDecision <s>/ submission</s></span><span class="sec">05 / 06</span></div>
+      <div class="kick" data-r style="--d:1">Working Prototype</div>
+      <h1 data-r style="--d:2">Live, deployed, and <span class="a">usable right now.</span></h1>
+      <div class="proto" data-r style="--d:3; margin-top:24px;">
+        <div>
+          <div class="lk"><div class="lt">Live demo</div><div class="lu">archdecision.vercel.app</div><div class="lv"><span class="dot"></span> Deployed on Vercel, health endpoint returns ok.</div></div>
+          <div class="lk"><div class="lt">Source</div><div class="lu sm">github.com/harshkawatra11/archdecision</div></div>
+          <div class="lk"><div class="lt">Demo video</div><div class="lu sm ph">[ add link ]</div></div>
+        </div>
+        <div class="win">
+          <div class="wb"><span class="d"></span><span class="d"></span><span class="d"></span><span class="ad">archdecision.vercel.app</span></div>
+          <img src="1.png" alt="ArchDecision landing page" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 06 ATTACHMENTS ===== -->
+  <section class="slide" data-title="Attachments">
+    <div class="pad" style="padding-top:44px;">
+      <div class="topline" data-r style="--d:0"><svg class="mk" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#11141a"/><path d="M9 22 L16 8 L23 22" fill="none" stroke="#35d07f" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.2 16 H19.8" stroke="#35d07f" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="8" r="1.8" fill="#35d07f"/></svg><span class="nm">ArchDecision <s>/ submission</s></span><span class="sec">06 / 06</span></div>
+      <div class="kick" data-r style="--d:1">Attachments</div>
+      <h1 data-r style="--d:2; font-size:40px;">Screens from the <span class="a">running app.</span></h1>
+      <div class="grid" data-r style="--d:3; margin-top:20px;">
+        <div class="gc"><div class="gi"><img src="2.png" alt="Pipeline run"></div><div class="cap"><b>Pipeline run</b><span>fetch, structure, signals, infer</span></div></div>
+        <div class="gc"><div class="gi"><img src="3.png" alt="Decisions list"></div><div class="cap"><b>Decisions list</b><span>8 ADRs, inferred and grounded</span></div></div>
+        <div class="gc"><div class="gi"><img src="4.png" alt="ADR detail"></div><div class="cap"><b>ADR detail</b><span>decision, rationale, evidence</span></div></div>
+        <div class="gc"><div class="gi"><img src="5.png" alt="Ask the codebase"></div><div class="cap"><b>Ask the codebase</b><span>answers with file citations</span></div></div>
+        <div class="gc"><div class="gi"><img src="6.png" alt="Onboarding doc"></div><div class="cap"><b>Onboarding doc</b><span>day-one guide, committable</span></div></div>
+        <div class="gc"><div class="gi"><img src="7.png" alt="Drift map"></div><div class="cap"><b>Drift map</b><span>now vs intended, per ADR</span></div></div>
+      </div>
+      <div class="afoot" data-r style="--d:4">
+        <span>Live &nbsp; <b>archdecision.vercel.app</b></span>
+        <span>Source &nbsp; <b>github.com/harshkawatra11/archdecision</b></span>
+      </div>
+    </div>
+  </section>
+
+</div>
+</div>
+
+<!-- ===== chrome ===== -->
+<div class="progress"><div class="pf" id="pf"></div></div>
+
+<nav class="rail" id="rail" aria-label="Sections"></nav>
+
+<div class="nav">
+  <button id="prev" aria-label="Previous slide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></button>
+  <span class="count"><b id="cur">1</b> / <span id="tot">7</span></span>
+  <button id="next" aria-label="Next slide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></button>
+</div>
+
+<div class="ohint">Press <kbd>O</kbd> for overview</div>
+
+<div class="overview" id="overview">
+  <h3>Overview &middot; jump to a slide</h3>
+  <div class="ogrid" id="ogrid"></div>
+</div>
+
+<script>
+(function () {
+  var deck = document.getElementById('deck');
+  var slides = Array.prototype.slice.call(deck.querySelectorAll('.slide'));
+  var total = slides.length;
+  var i = 0;
+  var titles = slides.map(function (s) { return s.getAttribute('data-title'); });
+  var descs = ['Title and team', 'Who built it, where it fits', 'The reasoning evaporates', 'Five features, one grounded core', 'Architecture and distillation', 'Live on Vercel', 'Screens from the app'];
+
+  // fit the 1280x720 deck to the viewport
+  function fit() {
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    deck.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+  }
+  window.addEventListener('resize', fit); fit();
+
+  // build rail
+  var rail = document.getElementById('rail');
+  slides.forEach(function (s, k) {
+    var b = document.createElement('button');
+    b.innerHTML = '<span class="tk"></span><span class="lbl">' + titles[k] + '</span>';
+    b.addEventListener('click', function () { go(k); });
+    rail.appendChild(b);
+  });
+  var railBtns = rail.querySelectorAll('button');
+
+  // build overview
+  var ogrid = document.getElementById('ogrid');
+  slides.forEach(function (s, k) {
+    var c = document.createElement('button');
+    c.className = 'ocard';
+    c.innerHTML = '<div class="on-n">' + (k === 0 ? 'Cover' : ('0' + k + ' / 06')) + '</div><div class="on-t">' + titles[k] + '</div><div class="on-d">' + descs[k] + '</div>';
+    c.addEventListener('click', function () { go(k); closeOverview(); });
+    ogrid.appendChild(c);
+  });
+  var ocards = ogrid.querySelectorAll('.ocard');
+
+  var pf = document.getElementById('pf');
+  var cur = document.getElementById('cur');
+  document.getElementById('tot').textContent = total;
+
+  function render() {
+    slides.forEach(function (s, k) { s.classList.toggle('active', k === i); });
+    railBtns.forEach(function (b, k) { b.classList.toggle('on', k === i); });
+    ocards.forEach(function (b, k) { b.classList.toggle('on', k === i); });
+    pf.style.width = (total === 1 ? 100 : (i / (total - 1)) * 100) + '%';
+    cur.textContent = i + 1;
+  }
+  function go(n) { i = Math.max(0, Math.min(total - 1, n)); render(); }
+  function next() { if (i < total - 1) go(i + 1); }
+  function prev() { if (i > 0) go(i - 1); }
+
+  var overview = document.getElementById('overview');
+  function openOverview() { overview.classList.add('show'); }
+  function closeOverview() { overview.classList.remove('show'); }
+  function toggleOverview() { overview.classList.toggle('show'); }
+
+  document.getElementById('next').addEventListener('click', next);
+  document.getElementById('prev').addEventListener('click', prev);
+
+  // click the stage to advance (ignore links, buttons, controls)
+  document.querySelector('.deckwrap').addEventListener('click', function (e) {
+    if (overview.classList.contains('show')) return;
+    if (e.target.closest('a, button, .rail, .nav')) return;
+    next();
+  });
+
+  document.addEventListener('keydown', function (e) {
+    var k = e.key;
+    if (k === 'ArrowRight' || k === 'PageDown' || k === ' ') { e.preventDefault(); if (overview.classList.contains('show')) closeOverview(); else next(); }
+    else if (k === 'ArrowLeft' || k === 'PageUp') { e.preventDefault(); prev(); }
+    else if (k === 'Home') { go(0); }
+    else if (k === 'End') { go(total - 1); }
+    else if (k === 'o' || k === 'O') { toggleOverview(); }
+    else if (k === 'Escape') { closeOverview(); }
+    else if (k >= '1' && k <= '7') { go(parseInt(k, 10) - 1); closeOverview(); }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

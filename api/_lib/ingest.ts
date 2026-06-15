@@ -10,9 +10,12 @@ import {
 import { computeStructureSummary, estimateTokens, manifestEcosystem, parseManifest } from './profile.js';
 import type { FileNode, RepoProfile, SignalFile } from './schema.js';
 
-const PER_FILE_CHAR_CAP = 8000; // ~2k tokens/file
-const MAX_SIGNAL_FILES = 20;
-const TOKEN_BUDGET = 40_000; // Gemini free tier supports 1M context; 40k leaves ample room
+const PER_FILE_CHAR_CAP = 16_000; // ~4k tokens/file
+const MAX_SIGNAL_FILES = 40;
+// Gemini 2.5 Flash holds 1M tokens, but the AI Studio free tier caps tokens-per-minute (~250k).
+// 150k keeps a single analyze call safely under that, with room for the system prompt + response.
+// Raise toward 500k+ on a paid key for deeper analysis.
+const TOKEN_BUDGET = 150_000;
 
 const MANIFEST_NAMES = new Set([
   'package.json',
