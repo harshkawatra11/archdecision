@@ -26,6 +26,7 @@ import {
   ScrollText,
   Server,
   ShieldCheck,
+  Waypoints,
   Zap,
 } from 'lucide-react';
 import type { ADR, Confidence, RepoProfileLite } from '../types';
@@ -35,8 +36,9 @@ import AskPanel from './AskPanel';
 import OnboardingPanel from './OnboardingPanel';
 import PrReviewPanel from './PrReviewPanel';
 import DriftPanel from './DriftPanel';
+import CodebaseMap from './CodebaseMap';
 
-type Tab = 'adrs' | 'ask' | 'onboarding' | 'pr' | 'drift';
+type Tab = 'map' | 'adrs' | 'ask' | 'onboarding' | 'pr' | 'drift';
 
 interface Props {
   profile: RepoProfileLite;
@@ -93,10 +95,11 @@ const CONF: Record<Confidence, { label: string; icon: string; text: string; badg
 /* ------------------------------------------------------------------ */
 
 export default function ResultsView({ profile, adrs, pat, onboardingDoc, setOnboardingDoc, onReset }: Props) {
-  const [tab, setTab] = useState<Tab>('adrs');
+  const [tab, setTab] = useState<Tab>('map');
   const [openIdx, setOpenIdx] = useState<number | null>(null);
 
   const tabs: { key: Tab; label: string; icon: React.ComponentType<{ className?: string }>; count?: number }[] = [
+    { key: 'map', label: 'Map', icon: Waypoints },
     { key: 'adrs', label: 'Decisions', icon: ScrollText, count: adrs.length },
     { key: 'ask', label: 'Ask', icon: MessageSquareText },
     { key: 'onboarding', label: 'Onboarding', icon: FileText },
@@ -214,6 +217,16 @@ export default function ResultsView({ profile, adrs, pat, onboardingDoc, setOnbo
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.16, ease: 'easeOut' }}
           >
+            {tab === 'map' && (
+              <CodebaseMap
+                profile={profile}
+                adrs={adrs}
+                onOpenDecision={(i) => {
+                  setTab('adrs');
+                  setOpenIdx(i);
+                }}
+              />
+            )}
             {tab === 'adrs' &&
               (openIdx == null ? (
                 <DecisionList adrs={adrs} onOpen={setOpenIdx} />

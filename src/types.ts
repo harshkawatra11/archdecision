@@ -37,6 +37,14 @@ export interface StructureSummary {
   largestFiles: { path: string; size: number }[];
 }
 
+export interface FolderInfo {
+  name: string;
+  fileCount: number;
+  sizeKB: number;
+  subdirs: string[];
+  topExtensions: string[];
+}
+
 export interface RepoProfileLite {
   owner: string;
   repo: string;
@@ -47,6 +55,7 @@ export interface RepoProfileLite {
   languages: Record<string, number>;
   manifests: ManifestFile[];
   structureSummary: StructureSummary;
+  folders: FolderInfo[];
   stats: { totalFiles: number; totalSizeKB: number; truncated: boolean };
   isMonorepo: boolean;
 }

@@ -30,6 +30,15 @@ export interface StructureSummary {
   largestFiles: { path: string; size: number }[];
 }
 
+// Grounded, computed facts about a top-level folder (for the codebase map).
+export interface FolderInfo {
+  name: string;
+  fileCount: number;
+  sizeKB: number;
+  subdirs: string[]; // immediate subdirectory names
+  topExtensions: string[]; // dominant file extensions, e.g. ["py", "pyi"]
+}
+
 export interface RepoProfile {
   owner: string;
   repo: string;
@@ -61,6 +70,7 @@ export interface RepoProfileLite {
   languages: Record<string, number>;
   manifests: ManifestFile[];
   structureSummary: StructureSummary;
+  folders: FolderInfo[];
   stats: RepoProfile['stats'];
   isMonorepo: boolean;
 }

@@ -1,6 +1,6 @@
 // RepoProfile helpers: structure summary, manifest parsing, token budgeting (PRD §13.6–13.8).
 
-import type { FileNode, ManifestFile, RepoProfile, RepoProfileLite, StructureSummary } from './schema.js';
+import type { FileNode, FolderInfo, ManifestFile, RepoProfile, RepoProfileLite, StructureSummary } from './schema.js';
 
 /** Rough token estimate: ~4 chars/token. Good enough for defensive budgeting. */
 export function estimateTokens(text: string): number {
@@ -127,6 +127,43 @@ export function computeStructureSummary(nodes: FileNode[], manifestPaths: string
   return { topLevelDirs, serviceCount, hasDocker, hasCI, testDirs, largestFiles };
 }
 
+/** Grounded per-folder facts for each top-level directory, computed from the file tree. */
+export function computeFolders(nodes: FileNode[], topLevelDirs: string[]): FolderInfo[] {
+  return topLevelDirs.map((dir) => {
+    const prefix = dir + '/';
+    const files = nodes.filter((n) => n.type === 'file' && n.path.startsWith(prefix));
+    const bytes = files.reduce((s, f) => s + f.size, 0);
+
+    // Immediate subdirectories (exactly one path segment below dir).
+    const subdirs = [
+      ...new Set(
+        nodes
+          .filter((n) => n.type === 'dir' && n.path.startsWith(prefix) && n.path.slice(prefix.length).indexOf('/') === -1)
+          .map((n) => n.path.slice(prefix.length)),
+      ),
+    ]
+      .sort()
+      .slice(0, 6);
+
+    // Dominant file extensions.
+    const extCount = new Map<string, number>();
+    for (const f of files) {
+      const name = f.path.split('/').pop() || '';
+      const dot = name.lastIndexOf('.');
+      if (dot > 0) {
+        const ext = name.slice(dot + 1).toLowerCase();
+        if (ext.length <= 8) extCount.set(ext, (extCount.get(ext) || 0) + 1);
+      }
+    }
+    const topExtensions = [...extCount.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([e]) => e);
+
+    return { name: dir, fileCount: files.length, sizeKB: Math.round(bytes / 1024), subdirs, topExtensions };
+  });
+}
+
 /** Derive the client-facing lite profile (no heavy file contents). */
 export function toLite(profile: RepoProfile): RepoProfileLite {
   return {
@@ -139,6 +176,7 @@ export function toLite(profile: RepoProfile): RepoProfileLite {
     languages: profile.languages,
     manifests: profile.manifests,
     structureSummary: profile.structureSummary,
+    folders: computeFolders(profile.fileTree, profile.structureSummary.topLevelDirs),
     stats: profile.stats,
     isMonorepo: profile.structureSummary.serviceCount >= 2,
   };
